@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT winner_coach_id, a_remaining, b_remaining FROM game WHERE match_id = ? ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "name": "winner_coach_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "winner_coach_id"
+          }
+        }
+      },
+      {
+        "name": "a_remaining",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "a_remaining"
+          }
+        }
+      },
+      {
+        "name": "b_remaining",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "b_remaining"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d62e10cde34a32b45e6d190e72d918b44a4b89b96c12e59519cd8e9f98607d2b"
+}

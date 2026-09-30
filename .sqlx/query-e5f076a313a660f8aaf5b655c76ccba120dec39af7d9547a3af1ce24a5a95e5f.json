@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO match (season_id, week, is_playoff, coach_a_id, coach_b_id)\n                 VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "e5f076a313a660f8aaf5b655c76ccba120dec39af7d9547a3af1ce24a5a95e5f"
+}

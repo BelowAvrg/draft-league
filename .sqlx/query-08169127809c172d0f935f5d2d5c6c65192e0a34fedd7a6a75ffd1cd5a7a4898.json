@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM cost WHERE season_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "08169127809c172d0f935f5d2d5c6c65192e0a34fedd7a6a75ffd1cd5a7a4898"
+}

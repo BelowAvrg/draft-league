@@ -1,0 +1,7 @@
+/target
+/dev.db*
+/.env
+
+/deploy
+/static/app.css
+/node_modules

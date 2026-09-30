@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO game (match_id, replay_id, replay_url, winner_coach_id, a_remaining, b_remaining, created_by)\n             VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (replay_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "ac902fea32548efd36fe11983e49171a8e39ad6bcfd281d60fcab79785b9c8bf"
+}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}{{ coach.discord_username }}{% endblock %}
+
+{% block content %}
+<a href="/board" class="nav-link text-xs">&larr; Draft board</a>
+
+<div class="mt-3 flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">{{ coach.discord_username }}</h1>
+        <p class="mt-1 text-muted">
+            {% if let Some(team) = coach.team_name %}{{ team }} · {% endif %}
+            {{ picks.len() }} / {{ max_roster }} drafted
+        </p>
+    </div>
+    {% call ui::status(status, on_clock) %}{% endcall %}
+</div>
+
+{# Budget as a base-stat bar: spent, then the reserve held back to reach the minimum. #}
+<section class="card mt-8">
+    <div class="flex items-baseline justify-between">
+        <h2 class="label">Budget</h2>
+        <p class="tabular-nums text-muted">
+            <span class="text-ink font-semibold">{{ coach.remaining() }}</span> of {{ coach.budget }} <span class="text-faint">pts</span> left
+        </p>
+    </div>
+    <div class="mt-3 h-1.5 rounded-full bg-raised flex overflow-hidden">
+        <div class="bg-ink" style="width: {{ coach.spent * 100 / coach.budget }}%"></div>
+        <div class="hatch" style="width: {{ reserve * 100 / coach.budget }}%"></div>
+    </div>
+    <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted tabular-nums">
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-sm bg-ink"></span>
+            <dt>Spent</dt><dd class="text-ink">{{ coach.spent }}</dd></div>
+        {% if reserve > 0 %}
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-sm hatch"></span>
+            <dt>Held for {{ open_required }} more</dt><dd class="text-ink">{{ reserve }}</dd></div>
+        {% endif %}
+        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-sm bg-raised border border-line-strong"></span>
+            <dt>Free to spend</dt><dd class="text-ink">{{ coach.remaining() - reserve }}</dd></div>
+    </dl>
+</section>
+
+<section class="mt-10">
+    <div class="flex items-baseline justify-between mb-4">
+        <h2 class="label">Party</h2>
+        <p class="text-xs text-faint">{{ min_roster }} required · up to {{ max_roster }}</p>
+    </div>
+
+    <ol class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {% for p in picks %}
+            {% let primary = p.types.split_whitespace().next().unwrap_or("normal")|lower %}
+            <li class="card p-4 relative type-{{ primary }}">
+                <span class="absolute top-3 right-4 font-mono text-xs text-faint">{{ "{:02}"|format(p.pick_number) }}</span>
+                <div class="sprite-glow w-24 h-24 mx-auto">
+                    <img src="/static/sprites/{{ p.slug }}.png" alt="" width="96" height="96" class="sprite">
+                </div>
+                <div class="mt-2 flex items-baseline justify-between gap-2">
+                    <p class="font-semibold truncate">{{ p.display_name }}</p>
+                    <span class="tabular-nums font-semibold whitespace-nowrap">{{ p.points_paid }}<span class="text-faint font-normal"> pts</span></span>
+                </div>
+                <div class="mt-2">{% call ui::types(p.types) %}{% endcall %}</div>
+            </li>
+        {% endfor %}
+        {% for _ in 0..open_required %}
+            <li class="rounded-xl border border-dashed border-line-strong min-h-[10.5rem] grid place-items-center text-xs text-muted">Required</li>
+        {% endfor %}
+        {% for _ in 0..open_optional %}
+            <li class="rounded-xl border border-dashed border-line min-h-[10.5rem] grid place-items-center text-xs text-faint">Optional</li>
+        {% endfor %}
+    </ol>
+</section>
+{% endblock %}

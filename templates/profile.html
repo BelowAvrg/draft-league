@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Your profile{% endblock %}
+
+{% block content %}
+<div class="max-w-md">
+    <h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Your profile</h1>
+    <p class="mt-1 text-muted">Signed in with Discord.</p>
+
+    <form method="post" action="/profile" class="card mt-8">
+        <p class="label">Discord</p>
+        <p class="mt-1.5 font-medium">{{ person.discord_username }}</p>
+        <p class="font-mono text-xs text-faint">{{ person.discord_id }}</p>
+
+        <label for="showdown" class="label block mt-6 mb-1.5">Showdown username</label>
+        <input id="showdown" name="showdown_username" maxlength="64"
+            value="{% if let Some(name) = person.showdown_username %}{{ name }}{% endif %}"
+            class="input w-full">
+        <p class="mt-1.5 text-xs text-muted">Replays are matched to you by this name. Leave it blank if you have none.</p>
+
+        <div class="mt-5 flex justify-end">
+            <button type="submit" class="btn-primary">Save</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

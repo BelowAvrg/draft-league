@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE match SET winner_coach_id = coach_a_id, differential = 3, result_source = 'manual'\n         WHERE id = (SELECT MIN(id) FROM match)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "de3d9d7da264f2729964d955368c4358e64d1e996cab0e5145957ae595b15771"
+}

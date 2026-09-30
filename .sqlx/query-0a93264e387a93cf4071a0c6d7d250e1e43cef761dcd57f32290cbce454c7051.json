@@ -1,0 +1,52 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT g.id, g.replay_url, COALESCE(c.team_name, p.discord_username) AS \"winner!: String\",\n                      CASE WHEN g.winner_coach_id = m.coach_a_id THEN g.a_remaining ELSE g.b_remaining END AS \"winner_remaining!: i64\"\n               FROM game g JOIN match m ON m.id = g.match_id\n               JOIN coach c ON c.id = g.winner_coach_id JOIN person p ON p.id = c.person_id\n               WHERE g.match_id = ?\n               ORDER BY g.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "replay_url",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "replay_url"
+          }
+        }
+      },
+      {
+        "name": "winner!: String",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "winner_remaining!: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0a93264e387a93cf4071a0c6d7d250e1e43cef761dcd57f32290cbce454c7051"
+}

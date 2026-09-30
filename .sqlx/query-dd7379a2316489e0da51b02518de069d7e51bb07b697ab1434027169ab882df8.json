@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.id AS \"pokemon_id!: i64\", m.slug, m.display_name, m.types,\n                      ct.points AS \"points!: i64\",\n                      p.discord_username AS \"taken_by?: String\"\n               FROM cost ct\n               JOIN pokemon m ON m.id = ct.pokemon_id\n               LEFT JOIN pick pk ON pk.pokemon_id = ct.pokemon_id AND pk.season_id = ct.season_id\n               LEFT JOIN coach c ON c.id = pk.coach_id\n               LEFT JOIN person p ON p.id = c.person_id\n               WHERE ct.season_id = ?\n               ORDER BY ct.points DESC, m.display_name",
+  "describe": {
+    "columns": [
+      {
+        "name": "pokemon_id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "slug",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "types",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "types"
+          }
+        }
+      },
+      {
+        "name": "points!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      },
+      {
+        "name": "taken_by?: String",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "dd7379a2316489e0da51b02518de069d7e51bb07b697ab1434027169ab882df8"
+}

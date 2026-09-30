@@ -1,0 +1,64 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT c.id, c.draft_position, c.done_at,\n                      (SELECT COUNT(*) FROM pick WHERE coach_id = c.id) AS \"picks!: i64\",\n                      c.budget - COALESCE(\n                          (SELECT SUM(points_paid) FROM pick WHERE coach_id = c.id), 0)\n                          AS \"remaining!: i64\"\n               FROM coach c WHERE c.season_id = ?\n               ORDER BY c.draft_position",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "draft_position",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "draft_position"
+          }
+        }
+      },
+      {
+        "name": "done_at",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "done_at"
+          }
+        }
+      },
+      {
+        "name": "picks!: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "remaining!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ff5d551ebb8d7e71e0a5dc73235682b2aea669d84fa79d6be880f5fff4d40342"
+}

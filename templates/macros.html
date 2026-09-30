@@ -1,0 +1,48 @@
+{# Small pieces shared across pages. See STYLE.md. #}
+
+{# A coach's draft standing: a dot in the status colour plus its label. #}
+{% macro status(label, on_clock) %}
+<span class="inline-flex items-center gap-2 text-muted whitespace-nowrap">
+    {% if on_clock %}
+        <span class="w-2 h-2 rounded-full bg-live animate-pulse"></span>On the clock
+    {% else if label == "drafting" %}
+        <span class="w-2 h-2 rounded-full bg-faint"></span>Drafting
+    {% else %}
+        <span class="w-2 h-2 rounded-full bg-warn"></span>{{ label|capitalize }}
+    {% endif %}
+</span>
+{% endmacro %}
+
+{# Type badges for a space-separated type list. #}
+{% macro types(list) %}
+<span class="inline-flex gap-1">
+    {% for t in list.split_whitespace() %}<span class="type-badge type-{{ t|lower }}">{{ t }}</span>{% endfor %}
+</span>
+{% endmacro %}
+
+{# The logo mark: a minimal Pokéball. #}
+{% macro pokeball(class) %}
+<svg viewBox="0 0 24 24" class="{{ class }}" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/><path d="M2 12h7m6 0h7"/><circle cx="12" cy="12" r="3"/>
+</svg>
+{% endmacro %}
+
+{# One selectable Pokémon in a picker: a hidden radio inside a label. The
+   enclosing element's Alpine scope must define `q`, the filter text. The name
+   is read from data-name so an apostrophe (Farfetch'd) can't break the JS. #}
+{% macro pick_row(l, size) %}
+<li data-name="{{ l.display_name|lower }}" x-show="$el.dataset.name.includes(q.toLowerCase())">
+    <label class="flex items-center gap-3 px-2 py-1 rounded-lg cursor-pointer transition-colors duration-150
+                  hover:bg-raised has-[:checked]:bg-raised has-[:checked]:ring-1 has-[:checked]:ring-ink/50
+                  has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink">
+        <input type="radio" name="pokemon_id" value="{{ l.pokemon_id }}" required class="sr-only">
+        <img src="/static/sprites/{{ l.slug }}.png" alt="" width="{{ size }}" height="{{ size }}" loading="lazy" class="sprite shrink-0">
+        <span class="flex-1 min-w-0 font-medium truncate">{{ l.display_name }}</span>
+        <span class="hidden sm:inline">{% call types(l.types) %}{% endcall %}</span>
+        <span class="w-16 text-right tabular-nums font-semibold">{{ l.points }}<span class="text-faint font-normal"> pts</span></span>
+    </label>
+</li>
+{% endmacro %}
+
+{# A signed number with a true minus: +3, −2, 0. #}
+{% macro signed(n) %}{% if n > 0 %}+{{ n }}{% else if n < 0 %}&minus;{{ n.abs() }}{% else %}0{% endif %}{% endmacro %}

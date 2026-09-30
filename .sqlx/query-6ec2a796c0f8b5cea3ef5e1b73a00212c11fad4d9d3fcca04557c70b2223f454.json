@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO match (season_id, week, is_playoff, coach_a_id, coach_b_id) VALUES (?, ?, ?, ?, ?)\n         RETURNING id AS \"id!\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "6ec2a796c0f8b5cea3ef5e1b73a00212c11fad4d9d3fcca04557c70b2223f454"
+}

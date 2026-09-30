@@ -1,0 +1,148 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.id, m.season_id, m.week, m.is_playoff AS \"is_playoff!: bool\",\n                  m.coach_a_id AS coach_a, m.coach_b_id AS coach_b,\n                  COALESCE(ca.team_name, pa.discord_username) AS \"team_a?: String\",\n                  COALESCE(cb.team_name, pb.discord_username) AS \"team_b?: String\",\n                  m.winner_coach_id AS winner, m.differential,\n                  m.is_forfeit AS \"is_forfeit!: bool\", s.best_of\n           FROM match m JOIN season s ON s.id = m.season_id\n           LEFT JOIN coach ca ON ca.id = m.coach_a_id LEFT JOIN person pa ON pa.id = ca.person_id\n           LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id\n           WHERE m.season_id = ?\n           ORDER BY m.week, m.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "season_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "season_id"
+          }
+        }
+      },
+      {
+        "name": "week",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "week"
+          }
+        }
+      },
+      {
+        "name": "is_playoff!: bool",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "is_playoff"
+          }
+        }
+      },
+      {
+        "name": "coach_a",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_a_id"
+          }
+        }
+      },
+      {
+        "name": "coach_b",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_b_id"
+          }
+        }
+      },
+      {
+        "name": "team_a?: String",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "team_b?: String",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "winner",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "winner_coach_id"
+          }
+        }
+      },
+      {
+        "name": "differential",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "differential"
+          }
+        }
+      },
+      {
+        "name": "is_forfeit!: bool",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "is_forfeit"
+          }
+        }
+      },
+      {
+        "name": "best_of",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "season",
+            "name": "best_of"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7747db4b6775511c334aaf9dcc2546bc8ca17e1b34fa49f65542aac886ae8120"
+}

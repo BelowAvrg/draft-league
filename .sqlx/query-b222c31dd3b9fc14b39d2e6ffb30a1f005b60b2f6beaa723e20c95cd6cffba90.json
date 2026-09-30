@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO match_result_edit\n             (match_id, person_id, source,\n              old_winner_coach_id, old_differential, old_is_forfeit,\n              new_winner_coach_id, new_differential, new_is_forfeit)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "b222c31dd3b9fc14b39d2e6ffb30a1f005b60b2f6beaa723e20c95cd6cffba90"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO coach (person_id, season_id, budget, draft_position) VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "833f52e66c78d6aa4814ab4c48aa1c220520effedd84965616e168a75d2d57c4"
+}

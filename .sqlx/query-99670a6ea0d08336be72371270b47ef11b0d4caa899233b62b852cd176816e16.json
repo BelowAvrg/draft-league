@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM queue_slot WHERE coach_id = ? AND slot_number = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "99670a6ea0d08336be72371270b47ef11b0d4caa899233b62b852cd176816e16"
+}

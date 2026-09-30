@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT week FROM match WHERE is_playoff = 1 ORDER BY week",
+  "describe": {
+    "columns": [
+      {
+        "name": "week",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "week"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3d4cd3dd89089783a3f30be9be7367f825431e62bca4d9aba25cff2237eeeaae"
+}

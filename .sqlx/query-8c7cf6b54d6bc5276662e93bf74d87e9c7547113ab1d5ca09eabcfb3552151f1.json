@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COALESCE(SUM(points_paid), 0) AS \"s!: i64\" FROM pick WHERE coach_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "s!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8c7cf6b54d6bc5276662e93bf74d87e9c7547113ab1d5ca09eabcfb3552151f1"
+}

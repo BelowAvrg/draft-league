@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO person (discord_id, discord_username) VALUES (?, ?)\n               ON CONFLICT (discord_id) DO UPDATE SET discord_id = excluded.discord_id\n               RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "eef27e9807417feaf455f8ed3bd2374c12d87719cf4fb2610cb5db74dafccd8c"
+}

@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(*) FROM match m WHERE m.season_id = ?\n               AND (m.winner_coach_id IS NOT NULL\n                    OR EXISTS (SELECT 1 FROM match_result_edit e WHERE e.match_id = m.id))",
+  "describe": {
+    "columns": [
+      {
+        "name": "COUNT(*)",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "feed7ec7950162a9646f0396ac48ddf0e68ae4bc6d5ba8c365ae044138e538d6"
+}

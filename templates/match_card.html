@@ -1,0 +1,29 @@
+{% import "macros.html" as ui %}
+{# One match as a scoreboard card. Needs `m` (Match), `me` (Option<i64>) and `stage` (&str, may be empty). #}
+{% let a_won = m.winner.is_some() && m.winner == m.coach_a %}
+{% let b_won = m.winner.is_some() && m.winner == m.coach_b %}
+<a href="/match/{{ m.id }}"
+   class="block rounded-xl border border-line overflow-hidden transition-colors duration-150 hover:border-line-strong
+          {% if m.involves(*me) %}bg-raised shadow-[inset_2px_0_0_theme(colors.ink)]{% else %}bg-surface{% endif %}">
+    {% let d = m.differential.unwrap_or_default() %}
+    <div class="flex items-center gap-3 px-4 h-11">
+        <span class="flex-1 min-w-0 truncate {% if a_won %}font-semibold{% else if m.winner.is_some() %}text-muted{% endif %}">
+            {% if let Some(t) = m.team_a %}{{ t }}{% else %}<span class="text-faint">TBD</span>{% endif %}
+        </span>
+        {% if a_won %}<span class="tabular-nums font-semibold">{% call ui::signed(d) %}{% endcall %}</span>{% endif %}
+    </div>
+    <div class="flex items-center gap-3 px-4 h-11 border-t border-line">
+        <span class="flex-1 min-w-0 truncate {% if b_won %}font-semibold{% else if m.winner.is_some() %}text-muted{% endif %}">
+            {% if let Some(t) = m.team_b %}{{ t }}{% else %}<span class="text-faint">TBD</span>{% endif %}
+        </span>
+        {% if b_won %}<span class="tabular-nums font-semibold">{% call ui::signed(d) %}{% endcall %}</span>{% endif %}
+    </div>
+    <div class="flex items-center justify-between gap-3 px-4 h-9 border-t border-line text-xs text-muted">
+        <span class="truncate">
+            {% if !stage.is_empty() %}{{ stage }} · {% endif %}
+            {% if m.is_forfeit %}Forfeit{% else if m.winner.is_some() %}Played{% else %}Not played{% endif %}
+            {% if m.involves(*me) %}· <span class="text-ink">Your match</span>{% endif %}
+        </span>
+        <span class="text-faint">Details &rarr;</span>
+    </div>
+</a>

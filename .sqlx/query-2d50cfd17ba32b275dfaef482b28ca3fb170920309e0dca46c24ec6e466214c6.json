@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT points AS \"points!: i64\" FROM cost\n               WHERE season_id = ?\n                 AND pokemon_id NOT IN (SELECT pokemon_id FROM pick WHERE season_id = ?)",
+  "describe": {
+    "columns": [
+      {
+        "name": "points!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2d50cfd17ba32b275dfaef482b28ca3fb170920309e0dca46c24ec6e466214c6"
+}

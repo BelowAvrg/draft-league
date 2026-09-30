@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM queue_slot WHERE pokemon_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "b5474869de953ff584ff1e96ecbc6a2674f4500c3381bfab1316ef7dff5adf9e"
+}

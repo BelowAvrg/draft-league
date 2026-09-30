@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO session (id, data, expiry_date) VALUES (?, ?, ?)\n                 ON CONFLICT (id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "f0fe9fae5aecdc65f0061ce75887f4c6a2b799e418cc85b48d4ab5f9d3c859ec"
+}

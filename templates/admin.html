@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Admin{% endblock %}
+
+{% block content %}
+
+<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Admin</h1>
+{% match season %}
+{% when Some with (s) %}
+<p class="mt-1 text-muted">
+    {{ s.name }} · rosters of {{ s.min_roster }}–{{ s.max_roster }} ·
+    {% if s.priced == 0 %}no tier list yet{% else %}<span class="tabular-nums">{{ s.priced }}</span> entries priced{% endif %}
+</p>
+
+{% if !row_errors.is_empty() %}
+    <div class="callout border-l-danger mt-8" role="alert">
+        <p class="font-medium">Nothing was imported. Fix these rows and paste again.</p>
+        <ul class="mt-2 space-y-1 font-mono text-xs text-muted">
+            {% for e in row_errors %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<section class="card p-0 mt-8 min-w-0">
+    <div class="px-5 pt-5 flex items-baseline justify-between gap-4">
+        <h2 class="label">Coaches</h2>
+        <p class="text-xs text-faint tabular-nums">{{ coaches.len() }} this season</p>
+    </div>
+    {% if coaches.is_empty() %}
+        <p class="px-5 pt-3 pb-5 text-muted">No coaches yet.</p>
+    {% else %}
+    <div class="overflow-x-auto">
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th class="w-16">#</th>
+                    <th>Coach</th>
+                    <th>Team</th>
+                    <th>Showdown</th>
+                    <th class="text-right">Budget</th>
+                    <th class="text-right">Spent</th>
+                    <th class="text-right">Left</th>
+                    <th><span class="sr-only">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for c in coaches %}
+                <tr class="align-top">
+                    <td>
+                        <input form="coach-{{ c.id }}" name="draft_position" type="number" min="1"
+                            value="{{ c.draft_position }}" aria-label="Draft position"
+                            class="input h-8 w-14 px-2 tabular-nums">
+                    </td>
+                    <td>
+                        <div class="flex items-center gap-2 h-8">
+                            <span class="font-medium max-w-[9rem] truncate" title="{{ c.discord_username }}">{{ c.discord_username }}</span>
+                            {% if c.is_admin %}<span class="label text-faint">Admin</span>{% endif %}
+                        </div>
+                        <div class="font-mono text-xs text-faint">{{ c.discord_id }}</div>
+                    </td>
+                    <td>
+                        <input form="coach-{{ c.id }}" name="team_name" maxlength="64" aria-label="Team name"
+                            value="{% if let Some(t) = c.team_name %}{{ t }}{% endif %}"
+                            class="input h-8 w-32 px-2">
+                    </td>
+                    <td>
+                        <input form="member-{{ c.person_id }}" name="showdown_username" maxlength="64" aria-label="Showdown username"
+                            value="{% if let Some(n) = c.showdown_username %}{{ n }}{% endif %}"
+                            class="input h-8 w-32 px-2">
+                        <div class="mt-2 flex items-center gap-3">
+                            <label class="flex items-center gap-1.5 text-xs text-muted">
+                                <input form="member-{{ c.person_id }}" type="checkbox" name="is_admin" value="1"
+                                    {% if c.is_admin %}checked{% endif %}> Admin
+                            </label>
+                            <button form="member-{{ c.person_id }}" type="submit" class="btn btn-sm">Save member</button>
+                        </div>
+                    </td>
+                    <td class="text-right">
+                        <input form="coach-{{ c.id }}" name="budget" type="number" min="1"
+                            value="{{ c.budget }}" aria-label="Budget"
+                            class="input h-8 w-20 px-2 text-right tabular-nums">
+                    </td>
+                    <td class="text-right leading-8">{{ c.spent }}</td>
+                    <td class="text-right leading-8 font-semibold">{{ c.remaining() }}</td>
+                    <td>
+                        <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+                            <button form="coach-{{ c.id }}" type="submit" class="btn btn-sm">Save</button>
+                            <button form="drop-{{ c.id }}" type="submit" class="btn-danger btn-sm"
+                                onclick="return confirm('Remove {{ c.discord_username }} from this season?')">Remove</button>
+                        </div>
+                        {# Finishing early is final for the coach; only an admin undoes it. #}
+                        {% if c.done_at.is_some() %}
+                            <div class="mt-2 flex items-center justify-end gap-2 text-xs">
+                                {% call ui::status("finished", false) %}{% endcall %}
+                                <button form="reopen-{{ c.id }}" type="submit" class="btn btn-sm">Reopen draft</button>
+                            </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {# Forms live outside the table so a row's inputs can span cells. #}
+    {% for c in coaches %}
+        <form id="coach-{{ c.id }}" method="post" action="/admin/coaches/{{ c.id }}"></form>
+        <form id="drop-{{ c.id }}" method="post" action="/admin/coaches/{{ c.id }}/remove"></form>
+        <form id="member-{{ c.person_id }}" method="post" action="/admin/members/{{ c.person_id }}"></form>
+        <form id="reopen-{{ c.id }}" method="post" action="/admin/coaches/{{ c.id }}/reopen"></form>
+    {% endfor %}
+    {% endif %}
+</section>
+
+<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+    <section class="card">
+        <h2 class="label">Pick corrections</h2>
+        {% if let Some(p) = last_pick %}
+            <form method="post" action="/admin/picks/undo" class="mt-4 flex flex-wrap items-center justify-between gap-4">
+                <input type="hidden" name="coach_id" value="{{ p.coach_id }}">
+                <input type="hidden" name="pick_number" value="{{ p.pick_number }}">
+                <p>
+                    <span class="font-mono text-xs text-faint">#{{ "{:02}"|format(p.pick_number) }}</span>
+                    <span class="font-semibold">{{ p.display_name }}</span>
+                    <span class="text-muted">by {{ p.discord_username }},</span>
+                    <span class="tabular-nums">{{ p.points_paid }}<span class="text-faint"> pts</span></span>
+                </p>
+                <button type="submit" class="btn-danger"
+                    onclick="return confirm('Undo this pick? The Pokémon returns to the pool and the points are refunded.')">Undo pick</button>
+            </form>
+            <p class="mt-3 text-xs text-muted">Only the latest pick can be undone. To fix an older one, undo back to it.</p>
+        {% else %}
+            <p class="mt-3 text-muted">No picks yet.</p>
+        {% endif %}
+    </section>
+
+    <form method="post" action="/admin/coaches" class="card" x-data="{ mode: 'existing' }">
+        <h2 class="label">Add a coach</h2>
+        <div class="mt-4 flex gap-5">
+            <label class="flex items-center gap-2"><input type="radio" name="mode" value="existing" x-model="mode" checked> Existing member</label>
+            <label class="flex items-center gap-2"><input type="radio" name="mode" value="new" x-model="mode"> By Discord ID</label>
+        </div>
+
+        <div x-show="mode === 'existing'" class="mt-4">
+            {% if candidates.is_empty() %}
+                <p class="text-muted">Everyone who has logged in is already a coach.</p>
+            {% else %}
+                <label for="person" class="label block mb-1.5">Member</label>
+                <select id="person" name="person_id" :disabled="mode !== 'existing'" class="input w-full">
+                    {% for p in candidates %}
+                        <option value="{{ p.id }}">{{ p.discord_username }} ({{ p.discord_id }})</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+        </div>
+
+        <div x-show="mode === 'new'" x-cloak class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <label for="discord-id" class="label block mb-1.5">Discord ID</label>
+                <input id="discord-id" name="discord_id" placeholder="17–20 digits" :disabled="mode !== 'new'"
+                    class="input w-full font-mono">
+            </div>
+            <div>
+                <label for="discord-name" class="label block mb-1.5">Display name</label>
+                <input id="discord-name" name="discord_username" :disabled="mode !== 'new'" class="input w-full">
+            </div>
+        </div>
+        <div x-show="mode === 'new'" x-cloak class="callout border-l-warn mt-4 text-muted">
+            A typed ID is unverified. A typo makes a coach nobody can log in as.
+            Prefer having them log in once.
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-end gap-4">
+            <div>
+                <label for="new-budget" class="label block mb-1.5">Budget</label>
+                <input id="new-budget" name="budget" type="number" min="1" required value="100"
+                    class="input w-24 text-right tabular-nums">
+            </div>
+            <div>
+                <label for="new-position" class="label block mb-1.5">Draft position</label>
+                <input id="new-position" name="draft_position" type="number" min="1" required
+                    value="{{ coaches.len() + 1 }}" class="input w-24 text-right tabular-nums">
+            </div>
+            <button type="submit" class="btn-primary ml-auto">Add coach</button>
+        </div>
+    </form>
+</div>
+
+<div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+    <form method="post" action="/admin/tiers" class="card">
+        <h2 class="label">Tier list import</h2>
+        <label for="csv" class="block mt-4 font-medium">Format sheet CSV</label>
+        <textarea id="csv" name="csv" rows="10" required
+            class="input h-auto w-full mt-1.5 py-2 font-mono text-xs"
+            placeholder='"ID","Name","Variation","Generation","Draftable","Tier","Status"'></textarea>
+        <p class="mt-2 text-xs text-muted">
+            Columns: <code class="font-mono text-ink">ID, Name, Variation, Generation, Draftable, Tier, Status</code>.
+            Rows marked not draftable are ignored; <code class="font-mono text-ink">Tier</code> is the cost.
+            This replaces the season's prices entirely and is refused once the draft has picks.
+        </p>
+        <div class="mt-4 flex justify-end">
+            <button type="submit" class="btn">Import tier list</button>
+        </div>
+    </form>
+
+    <form method="post" action="/admin/schedule" class="card">
+        <h2 class="label">Schedule import</h2>
+        <label for="schedule-csv" class="block mt-4 font-medium">draftleague.net export CSV</label>
+        <textarea id="schedule-csv" name="csv" rows="10" required
+            class="input h-auto w-full mt-1.5 py-2 font-mono text-xs"
+            placeholder='"Team_One_ID","Team_One_Name","Team_Two_ID","Team_Two_Name","Week"'></textarea>
+        <p class="mt-2 text-xs text-muted">
+            Columns: <code class="font-mono text-ink">Team_One_ID, Team_One_Name, Team_Two_ID, Team_Two_Name, Week</code>.
+            Teams are matched by the team names set above; rows with both teams blank become playoff matches.
+            This replaces the season's schedule entirely and is refused once any match has a result.
+        </p>
+        <div class="mt-4 flex justify-end">
+            <button type="submit" class="btn">Import schedule</button>
+        </div>
+    </form>
+</div>
+{% when None %}
+<div class="py-24 flex flex-col items-center gap-4 text-faint">
+    {% call ui::pokeball("w-10 h-10") %}{% endcall %}
+    <p>No active season. Create one before importing a tier list.</p>
+</div>
+{% endmatch %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT c.id AS \"coach_id!: i64\",\n                      (SELECT COUNT(*) FROM queue_slot q WHERE q.coach_id = c.id) AS \"n!: i64\"\n               FROM coach c WHERE c.season_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "coach_id!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "n!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "3209fa5d9f63358260bdf30f5b91aa69cc70ab678f086094881b8292a25ba63a"
+}

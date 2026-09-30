@@ -1,0 +1,10 @@
+.git
+.github
+/target
+*.md
+.env
+dev.db
+dev.db-shm
+dev.db-wal
+node_modules
+static/app.css

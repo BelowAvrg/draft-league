@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT pk.pick_number, pk.coach_id, pk.points_paid,\n                      p.discord_username, m.slug, m.display_name, m.types\n               FROM pick pk\n               JOIN coach c ON c.id = pk.coach_id\n               JOIN person p ON p.id = c.person_id\n               JOIN pokemon m ON m.id = pk.pokemon_id\n               WHERE pk.coach_id = ?\n               ORDER BY pk.pick_number",
+  "describe": {
+    "columns": [
+      {
+        "name": "pick_number",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "pick_number"
+          }
+        }
+      },
+      {
+        "name": "coach_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "coach_id"
+          }
+        }
+      },
+      {
+        "name": "points_paid",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "points_paid"
+          }
+        }
+      },
+      {
+        "name": "discord_username",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "slug",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "types",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "types"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "775431a948adb78d16618e5ce1661ca1e06328f9df12edf08c94e5a7481bb949"
+}

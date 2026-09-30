@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Tier list{% endblock %}
+
+{% block content %}
+<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Tier list</h1>
+
+{% if listings.is_empty() %}
+<div class="py-24 flex flex-col items-center gap-4 text-faint">
+    {% call ui::pokeball("w-10 h-10") %}{% endcall %}
+    <p>No tier list imported yet.</p>
+</div>
+{% else %}
+<p class="mt-1 text-muted tabular-nums">{{ listings.len() }} Pokémon · {{ taken }} drafted</p>
+
+<div x-data="{ q: '', hideTaken: false }">
+    <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+        <input x-model="q" type="search" placeholder="Filter by name" aria-label="Filter by name"
+               class="input w-full sm:w-72">
+        <label class="flex items-center gap-2 h-10 text-muted cursor-pointer">
+            <input type="checkbox" x-model="hideTaken" class="w-4 h-4"> Hide drafted
+        </label>
+    </div>
+
+    <section class="card p-0 mt-4 min-w-0">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Pokémon</th>
+                    <th class="hidden sm:table-cell">Type</th>
+                    <th class="text-right">Cost</th>
+                    <th class="hidden sm:table-cell">Drafted by</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in listings %}
+                    {% let drafted = l.taken_by.is_some() %}
+                    <tr data-name="{{ l.display_name|lower }}"
+                        x-show="$el.dataset.name.includes(q.toLowerCase()) && !(hideTaken && {{ drafted }})">
+                        <td class="py-1.5">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <img src="/static/sprites/{{ l.slug }}.png" alt="" width="32" height="32" loading="lazy"
+                                     class="sprite shrink-0 {% if drafted %}grayscale opacity-40{% endif %}">
+                                <div class="min-w-0">
+                                    <p class="font-semibold truncate {% if drafted %}opacity-40{% endif %}">{{ l.display_name }}</p>
+                                    {% if let Some(who) = l.taken_by %}
+                                        <p class="sm:hidden text-xs text-muted truncate">{{ who }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-1.5 hidden sm:table-cell {% if drafted %}grayscale opacity-40{% endif %}">
+                            {% call ui::types(l.types) %}{% endcall %}
+                        </td>
+                        <td class="py-1.5 text-right whitespace-nowrap {% if drafted %}opacity-40{% endif %}">
+                            <span class="font-semibold">{{ l.points }}</span><span class="text-faint"> pts</span>
+                        </td>
+                        <td class="py-1.5 hidden sm:table-cell">
+                            {% match l.taken_by %}
+                            {% when Some with (who) %}<span class="block max-w-[14rem] truncate text-muted">{{ who }}</span>
+                            {% when None %}<span class="inline-flex items-center gap-2 text-muted"><span class="w-2 h-2 rounded-full bg-live"></span>Available</span>
+                            {% endmatch %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endif %}
+{% endblock %}

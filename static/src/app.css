@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Inter";
+  src: url("/static/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/static/fonts/jetbrains-mono.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+@layer base {
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: theme(colors.ink);
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-line rounded-xl p-5;
+  }
+  .label {
+    @apply text-[11px] font-medium uppercase tracking-[0.06em] text-muted;
+  }
+  .nav-link {
+    @apply text-muted hover:text-ink transition-colors duration-150 whitespace-nowrap;
+  }
+  .nav-link[aria-current="page"] {
+    @apply text-ink;
+  }
+  .btn {
+    @apply inline-flex items-center h-9 px-3.5 rounded-lg border border-line-strong bg-raised
+      text-ink font-medium transition-colors duration-150 hover:bg-white/10;
+  }
+  /* Inside table rows and other tight spots. */
+  .btn-sm {
+    @apply h-8 px-2.5 text-xs whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-canvas border-ink hover:bg-white;
+  }
+  .btn-danger {
+    @apply btn bg-transparent text-danger border-danger/40 hover:bg-danger/10;
+  }
+  .input {
+    @apply h-9 px-3 rounded-lg bg-raised border border-line-strong text-ink placeholder:text-faint
+      outline-none focus:ring-2 focus:ring-ink/80;
+  }
+  .callout {
+    @apply bg-surface border border-line border-l-2 rounded-lg px-4 py-3;
+  }
+  .table {
+    @apply w-full tabular-nums;
+  }
+  :where(.table th) {
+    @apply label text-left font-medium py-3 px-2 sm:px-3 first:pl-5 last:pr-5;
+  }
+  :where(.table td) {
+    @apply py-3 px-2 sm:px-3 first:pl-5 last:pr-5 border-t border-line;
+  }
+  .sprite {
+    image-rendering: pixelated;
+  }
+  /* Soft glow in the primary type colour behind a card sprite. */
+  .sprite-glow {
+    background: radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--type) 30%, transparent),
+      transparent
+    );
+  }
+  .type-badge {
+    @apply inline-block w-16 rounded-md py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide;
+    background: var(--type);
+    color: var(--on-type, #0b0b0f);
+  }
+  /* Reserve segment of a budget bar: points held back to reach the minimum roster. */
+  .hatch {
+    background: repeating-linear-gradient(
+      -45deg,
+      rgb(255 255 255 / 0.35) 0 2px,
+      transparent 2px 5px
+    );
+  }
+}
+
+/* Canonical type colours (STYLE.md). Outside @layer so Tailwind never purges
+   them: templates build these class names from data. */
+.type-normal   { --type: #A8A77A; }
+.type-fire     { --type: #EE8130; }
+.type-water    { --type: #6390F0; }
+.type-electric { --type: #F7D02C; }
+.type-grass    { --type: #7AC74C; }
+.type-ice      { --type: #96D9D6; }
+.type-fighting { --type: #C22E28; --on-type: #fff; }
+.type-poison   { --type: #A33EA1; --on-type: #fff; }
+.type-ground   { --type: #E2BF65; }
+.type-flying   { --type: #A98FF3; }
+.type-psychic  { --type: #F95587; }
+.type-bug      { --type: #A6B91A; }
+.type-rock     { --type: #B6A136; }
+.type-ghost    { --type: #735797; --on-type: #fff; }
+.type-dragon   { --type: #6F35FC; --on-type: #fff; }
+.type-dark     { --type: #705746; --on-type: #fff; }
+.type-steel    { --type: #B7B7CE; }
+.type-fairy    { --type: #D685AD; }

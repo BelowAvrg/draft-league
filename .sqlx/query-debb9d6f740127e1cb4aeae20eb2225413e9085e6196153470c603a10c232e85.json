@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(DISTINCT MIN(coach_a_id, coach_b_id) || '-' || MAX(coach_a_id, coach_b_id)) AS \"n!: i64\"\n           FROM match WHERE is_playoff = 0",
+  "describe": {
+    "columns": [
+      {
+        "name": "n!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "debb9d6f740127e1cb4aeae20eb2225413e9085e6196153470c603a10c232e85"
+}

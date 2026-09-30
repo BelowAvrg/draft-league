@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Week {{ m.week }} match{% endblock %}
+
+{% block content %}
+{# The forms need both teams; a playoff slot not yet seeded has none. #}
+{% let editable = can_edit && m.coach_a.is_some() && m.coach_b.is_some() %}
+<a href="/schedule?week={{ m.week }}" class="nav-link text-xs">&larr; Schedule</a>
+
+<h1 class="mt-3 text-[28px] leading-tight font-semibold tracking-[-0.02em] break-words">
+    {% if let Some(t) = m.team_a %}{{ t }}{% else %}<span class="text-faint">TBD</span>{% endif %}
+    <span class="text-muted font-normal">vs</span>
+    {% if let Some(t) = m.team_b %}{{ t }}{% else %}<span class="text-faint">TBD</span>{% endif %}
+</h1>
+<p class="mt-1 text-muted">
+    Week {{ m.week }} ·
+    {% if m.is_playoff %}<span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-warn"></span>Playoffs</span> ·{% endif %}
+    best of {{ m.best_of }} ·
+    <span class="text-ink font-semibold tabular-nums">{{ m.result() }}</span>
+</p>
+
+<div class="mt-8 space-y-6">
+    <section class="card p-0 min-w-0">
+        <h2 class="label px-5 pt-5">Games</h2>
+        {% if games.is_empty() %}
+            <div class="py-10 flex flex-col items-center gap-3 text-faint">
+                {% call ui::pokeball("w-8 h-8") %}{% endcall %}
+                <p>No replays yet.</p>
+            </div>
+        {% else %}
+            <div class="overflow-x-auto">
+                <table class="table mt-2">
+                    <thead>
+                        <tr>
+                            <th class="w-10 hidden sm:table-cell">#</th>
+                            <th class="pl-5 sm:pl-3">Winner</th>
+                            <th class="text-right">Differential</th>
+                            <th class="text-right">Replay</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for g in games %}
+                        <tr>
+                            <td class="hidden sm:table-cell font-mono text-xs text-faint">{{ loop.index }}</td>
+                            <td class="pl-5 sm:pl-3"><span class="block max-w-[7rem] sm:max-w-none truncate font-medium">{{ g.winner }}</span></td>
+                            <td class="text-right tabular-nums">{{ g.winner_remaining }}</td>
+                            <td>
+                                <div class="flex items-center justify-end gap-3">
+                                    <a href="{{ g.replay_url }}" class="nav-link underline underline-offset-4" rel="noopener" target="_blank">Watch</a>
+                                    {% if can_edit %}
+                                    <form method="post" action="/match/{{ m.id }}/game/{{ g.id }}/remove"
+                                          onsubmit="return confirm('Remove game {{ loop.index }}? A result its replays set will follow the games left.')">
+                                        <button type="submit" class="btn-danger btn-sm">Remove</button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </section>
+
+    {% if editable %}
+    {% if let (Some(a), Some(b)) = (m.coach_a, m.coach_b) %}
+    <div class="space-y-6">
+        <form method="post" action="/match/{{ m.id }}/replay" class="card">
+            <h2 class="text-[15px] font-semibold">Add a replay</h2>
+            <label for="replay-url" class="mt-4 block label">Showdown replay</label>
+            <input id="replay-url" name="url" type="url" required placeholder="https://replay.pokemonshowdown.com/…"
+                   class="input w-full mt-2">
+            <p class="mt-2 text-xs text-muted">
+                One replay per game. Once enough games are in to decide the match, the result is set from them.
+                Both players' Showdown names must match the coaches' profiles.
+            </p>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="btn-primary">Add replay</button>
+            </div>
+        </form>
+
+        <form method="post" action="/match/{{ m.id }}/result" class="card" x-data="{ forfeit: {{ m.is_forfeit }} }">
+            <h2 class="text-[15px] font-semibold">Enter the result by hand</h2>
+            <label for="winner" class="mt-4 block label">Winner</label>
+            <select id="winner" name="winner" class="input w-full mt-2">
+                <option value="">No result</option>
+                <option value="{{ a }}" {% if m.winner == m.coach_a %}selected{% endif %}>{% if let Some(t) = m.team_a %}{{ t }}{% endif %}</option>
+                <option value="{{ b }}" {% if m.winner == m.coach_b %}selected{% endif %}>{% if let Some(t) = m.team_b %}{{ t }}{% endif %}</option>
+            </select>
+            <div class="mt-4 flex items-end gap-4">
+                <div x-show="!forfeit">
+                    <label for="differential" class="block label">Winner's differential</label>
+                    <input id="differential" name="differential" type="number" min="{{ min_differential }}" max="{{ max_differential }}"
+                           value="{% if !m.is_forfeit %}{% if let Some(d) = m.differential %}{{ d }}{% endif %}{% endif %}"
+                           class="input w-24 mt-2 tabular-nums">
+                </div>
+                <label class="h-9 flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="forfeit" value="1" x-model="forfeit" class="w-4 h-4">
+                    Forfeit
+                </label>
+            </div>
+            <p class="mt-3 text-xs text-muted">
+                Differential is the winner's KOs dealt minus KOs taken, summed over games:
+                <span class="tabular-nums">{{ min_differential }} to {{ max_differential }}</span>.
+                A forfeit scores <span class="tabular-nums">+{{ max_differential }}</span>.
+            </p>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="btn">Save result</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+    {% endif %}
+
+</div>
+{% endblock %}

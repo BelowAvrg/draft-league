@@ -1,0 +1,112 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.discord_username AS by, e.created_at, e.source,\n                      COALESCE(co.team_name, po.discord_username) AS \"old_winner?: String\",\n                      e.old_differential, e.old_is_forfeit AS \"old_is_forfeit!: bool\",\n                      COALESCE(cn.team_name, pn.discord_username) AS \"new_winner?: String\",\n                      e.new_differential, e.new_is_forfeit AS \"new_is_forfeit!: bool\"\n               FROM match_result_edit e\n               JOIN person p ON p.id = e.person_id\n               LEFT JOIN coach co ON co.id = e.old_winner_coach_id LEFT JOIN person po ON po.id = co.person_id\n               LEFT JOIN coach cn ON cn.id = e.new_winner_coach_id LEFT JOIN person pn ON pn.id = cn.person_id\n               WHERE e.match_id = ?\n               ORDER BY e.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "by",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "match_result_edit",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "name": "source",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "match_result_edit",
+            "name": "source"
+          }
+        }
+      },
+      {
+        "name": "old_winner?: String",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "old_differential",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_result_edit",
+            "name": "old_differential"
+          }
+        }
+      },
+      {
+        "name": "old_is_forfeit!: bool",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_result_edit",
+            "name": "old_is_forfeit"
+          }
+        }
+      },
+      {
+        "name": "new_winner?: String",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "new_differential",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_result_edit",
+            "name": "new_differential"
+          }
+        }
+      },
+      {
+        "name": "new_is_forfeit!: bool",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_result_edit",
+            "name": "new_is_forfeit"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "ccdb6149aadd8819680c081d0e15d20fba3de6bd8e43b68a8e018b4b63df33d5"
+}

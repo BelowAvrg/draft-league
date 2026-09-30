@@ -1,0 +1,141 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT c.id, c.person_id, c.budget, c.draft_position, c.done_at, c.team_name,\n                  p.discord_id, p.discord_username, p.showdown_username,\n                  p.is_admin AS \"is_admin!: bool\",\n                  COALESCE((SELECT SUM(points_paid) FROM pick WHERE coach_id = c.id), 0)\n                      AS \"spent!: i64\"\n           FROM coach c JOIN person p ON p.id = c.person_id\n           WHERE c.season_id = ?\n           ORDER BY c.draft_position",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "person_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "person_id"
+          }
+        }
+      },
+      {
+        "name": "budget",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "budget"
+          }
+        }
+      },
+      {
+        "name": "draft_position",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "draft_position"
+          }
+        }
+      },
+      {
+        "name": "done_at",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "done_at"
+          }
+        }
+      },
+      {
+        "name": "team_name",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "team_name"
+          }
+        }
+      },
+      {
+        "name": "discord_id",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_id"
+          }
+        }
+      },
+      {
+        "name": "discord_username",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "showdown_username",
+        "ordinal": 8,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "showdown_username"
+          }
+        }
+      },
+      {
+        "name": "is_admin!: bool",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "is_admin"
+          }
+        }
+      },
+      {
+        "name": "spent!: i64",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3adf80c7ce0138d068940a7990cee09334c90da6dc86d9d76766498127223940"
+}

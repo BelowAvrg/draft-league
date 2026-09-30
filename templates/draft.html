@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Your draft{% endblock %}
+
+{% block content %}
+<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Your draft</h1>
+
+{% match seat %}
+{% when None %}
+<p class="mt-1 text-muted">{{ season.name }}</p>
+<div class="py-24 flex flex-col items-center gap-4 text-faint">
+    {% call ui::pokeball("w-10 h-10") %}{% endcall %}
+    <p>You are not a coach in {{ season.name }}. An admin can add you.</p>
+</div>
+
+{% when Some with (me) %}
+<p class="mt-1 text-muted tabular-nums">
+    {{ season.name }} · {{ me.picks }} / {{ season.max_roster }} drafted ·
+    <span class="text-ink font-semibold">{{ me.remaining }}</span> pts left
+    {% if me.reserve > 0 %}· keep {{ me.reserve }} back to reach {{ season.min_roster }}{% endif %}
+</p>
+
+{# Rendered only on your turn; /draft/pick re-checks server-side. #}
+{% if my_turn %}
+    <form method="post" action="/draft/pick" class="card mt-8 border-line-strong" x-data="{ q: '' }">
+        <p class="label">Pick {{ me.picks + 1 }}</p>
+        <h2 class="mt-1 text-xl font-semibold flex items-center gap-2.5">
+            <span class="w-2 h-2 rounded-full bg-live animate-pulse"></span>You're on the clock
+        </h2>
+        {% if affordable.is_empty() %}
+            <p class="mt-4 text-muted">Nothing left you can afford.</p>
+        {% else %}
+            <input x-model="q" type="search" placeholder="Filter {{ affordable.len() }} Pokémon you can afford"
+                   class="input w-full mt-5" aria-label="Filter Pokémon">
+            <ul class="mt-3 -mx-2 max-h-[26rem] overflow-y-auto">
+                {% for l in available %}
+                    {% if affordable.contains(l.pokemon_id) %}
+                    {% call ui::pick_row(l, 48) %}{% endcall %}
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="btn-primary">Draft</button>
+            </div>
+        {% endif %}
+    </form>
+{% else %}
+    <div class="callout border-l-faint mt-8">
+        {% match waiting_on %}
+        {% when Some with (name) %}
+            Waiting on <span class="font-semibold">{{ name }}</span>.
+            Queue your next picks and they are taken for you when your turn comes.
+        {% when None %}
+            The draft is not waiting on anyone right now.
+        {% endmatch %}
+    </div>
+{% endif %}
+
+<div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2 items-start">
+    <section class="card p-0 min-w-0">
+        <div class="px-5 pt-5 flex items-baseline justify-between gap-4">
+            <h2 class="label">Queue</h2>
+            <p class="flex items-center gap-1.5 text-xs text-muted">
+                <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                </svg>
+                Only you can see this
+            </p>
+        </div>
+        <p class="px-5 mt-2 text-muted">
+            Each slot is for that pick number, not a backup for the one before.
+            If someone drafts what you queued, the slot empties and the draft waits for you.
+        </p>
+        <ol class="mt-3 tabular-nums">
+            {% for row in slots %}
+                <li class="flex items-center gap-3 px-5 min-h-[3.25rem] py-2 border-t border-line">
+                    <span class="w-5 shrink-0 font-mono text-xs text-faint">{{ "{:02}"|format(row.slot_number) }}</span>
+                    {% match row.queued %}
+                    {% when Some with (q) %}
+                        <img src="/static/sprites/{{ q.slug }}.png" alt="" width="32" height="32" class="sprite shrink-0">
+                        <span class="flex-1 min-w-0 font-semibold truncate">{{ q.display_name }}</span>
+                        <span class="hidden sm:inline lg:hidden">{% call ui::types(row.types) %}{% endcall %}</span>
+                        <span class="whitespace-nowrap"><span class="font-semibold">{{ q.points }}</span><span class="text-faint"> pts</span></span>
+                    {% when None %}
+                        <span class="flex-1 text-faint">{% if row.passed %}Drafted{% else %}Empty{% endif %}</span>
+                    {% endmatch %}
+                    {% if !row.passed %}
+                        <label for="slot-{{ row.slot_number }}" class="btn btn-sm cursor-pointer">
+                            {% if row.queued.is_some() %}Change{% else %}Set{% endif %}
+                        </label>
+                        {% if row.queued.is_some() %}
+                            <form method="post" action="/draft/queue/{{ row.slot_number }}/clear">
+                                <button type="submit" class="btn h-8 w-8 px-0 justify-center bg-transparent text-muted"
+                                        aria-label="Clear pick {{ row.slot_number }}" title="Clear">
+                                    <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                                </button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    {# One picker for every slot: choose the pick number, then the Pokémon. #}
+    {% if let Some(start) = next_slot %}
+    <form method="post" action="/draft/queue" class="card min-w-0 lg:sticky lg:top-20" x-data="{ q: '' }">
+        <h2 class="label">Queue a Pokémon</h2>
+        <fieldset class="mt-3">
+            <legend class="text-muted">For pick</legend>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+                {% for row in slots %}
+                    {% if !row.passed %}
+                    <label class="w-10 h-10 grid place-items-center rounded-lg border border-line-strong bg-raised cursor-pointer
+                                  tabular-nums transition-colors duration-150 hover:bg-white/10
+                                  has-[:checked]:bg-ink has-[:checked]:text-canvas has-[:checked]:border-ink
+                                  has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink">
+                        <input type="radio" name="slot_number" id="slot-{{ row.slot_number }}" value="{{ row.slot_number }}"
+                               required class="sr-only" {% if row.slot_number == *start %}checked{% endif %}>
+                        {{ row.slot_number }}
+                    </label>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </fieldset>
+        <input x-model="q" type="search" placeholder="Filter {{ available.len() }} Pokémon"
+               class="input w-full mt-5" aria-label="Filter Pokémon">
+        <ul class="mt-3 -mx-2 max-h-[22rem] overflow-y-auto">
+            {% for l in available %}
+                {% call ui::pick_row(l, 32) %}{% endcall %}
+            {% endfor %}
+        </ul>
+        <p class="mt-3 text-xs text-muted">Points are checked when the pick comes up, not now.</p>
+        <div class="mt-4 flex justify-end">
+            <button type="submit" class="{% if my_turn %}btn{% else %}btn-primary{% endif %}">Queue</button>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endmatch %}
+{% endblock %}

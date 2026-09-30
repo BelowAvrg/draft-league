@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coach SET budget = ?, draft_position = ?, team_name = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a346aaeecbefca5e563615feb9684882c9684ce308839166f4ee72eccb4bed89"
+}

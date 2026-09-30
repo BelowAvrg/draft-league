@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT q.slot_number, q.pokemon_id, m.slug, m.display_name,\n                      ct.points AS \"points!: i64\"\n               FROM queue_slot q\n               JOIN pokemon m ON m.id = q.pokemon_id\n               JOIN coach c ON c.id = q.coach_id\n               JOIN cost ct ON ct.pokemon_id = q.pokemon_id AND ct.season_id = c.season_id\n               WHERE q.coach_id = ?\n               ORDER BY q.slot_number",
+  "describe": {
+    "columns": [
+      {
+        "name": "slot_number",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "queue_slot",
+            "name": "slot_number"
+          }
+        }
+      },
+      {
+        "name": "pokemon_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "queue_slot",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "slug",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "points!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "714ae5579e182457a43a216dfc15c30e5c17a52e3c8aafbaad1ad40e91d197ec"
+}

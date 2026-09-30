@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.season_id, m.coach_a_id, m.coach_b_id, m.winner_coach_id, m.differential,\n                      m.is_forfeit AS \"is_forfeit!: bool\", m.result_source, s.best_of\n               FROM match m JOIN season s ON s.id = m.season_id\n               WHERE m.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "season_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "season_id"
+          }
+        }
+      },
+      {
+        "name": "coach_a_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_a_id"
+          }
+        }
+      },
+      {
+        "name": "coach_b_id",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_b_id"
+          }
+        }
+      },
+      {
+        "name": "winner_coach_id",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "winner_coach_id"
+          }
+        }
+      },
+      {
+        "name": "differential",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "differential"
+          }
+        }
+      },
+      {
+        "name": "is_forfeit!: bool",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "is_forfeit"
+          }
+        }
+      },
+      {
+        "name": "result_source",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "result_source"
+          }
+        }
+      },
+      {
+        "name": "best_of",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "season",
+            "name": "best_of"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "21f368cd6a09c994acfb75cb9aec6e62d35c7896760d937e3a68db12db3f6c2f"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT slot_number FROM queue_slot\n             WHERE coach_id = ? AND pokemon_id = ? AND slot_number != ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "slot_number",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "queue_slot",
+            "name": "slot_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2c038c505dbe7bebb575d0bade7ffaeaa6bf0bd10ed1db17b6ce945ab9d37c8a"
+}

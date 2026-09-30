@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM game WHERE id = ? AND match_id = ? RETURNING replay_id",
+  "describe": {
+    "columns": [
+      {
+        "name": "replay_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "replay_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ac8a6900444281e90b33cf7a367979292f9d74ecd8d738aaad02aae380a0c800"
+}

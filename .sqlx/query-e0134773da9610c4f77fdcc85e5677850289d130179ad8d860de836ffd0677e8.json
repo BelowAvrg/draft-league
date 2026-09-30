@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO season (name, min_roster, max_roster, is_active, format)\n         VALUES ('S1', 8, 12, 1, 'gen9championsvgc2026regmc') RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "season",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e0134773da9610c4f77fdcc85e5677850289d130179ad8d860de836ffd0677e8"
+}

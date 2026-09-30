@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO pick_correction\n                 (season_id, person_id, pokemon_id, pick_number, points_paid, picked_at, undone_by)\n             SELECT pk.season_id, c.person_id, pk.pokemon_id, pk.pick_number, pk.points_paid,\n                    pk.created_at, ?\n             FROM pick pk JOIN coach c ON c.id = pk.coach_id\n             WHERE pk.id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "77695a2c21d57b294f0dace9152a595a35feb0a5bc872390847f28197ed4994f"
+}

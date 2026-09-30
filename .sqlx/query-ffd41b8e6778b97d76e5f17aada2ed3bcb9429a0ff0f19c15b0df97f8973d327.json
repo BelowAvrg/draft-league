@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT data, expiry_date FROM session WHERE id = ? AND expiry_date >= ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "data",
+        "ordinal": 0,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "session",
+            "name": "data"
+          }
+        }
+      },
+      {
+        "name": "expiry_date",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "session",
+            "name": "expiry_date"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "ffd41b8e6778b97d76e5f17aada2ed3bcb9429a0ff0f19c15b0df97f8973d327"
+}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Schedule</h1>
+        <p class="mt-1 text-muted">
+            {% if let Some(s) = season %}{{ s.name }}{% else %}No active season{% endif %}
+            {% if let Some((last, _)) = weeks.last() %}· week <span class="tabular-nums">{{ week }}</span> of <span class="tabular-nums">{{ last }}</span>{% endif %}
+        </p>
+    </div>
+    {% if !weeks.is_empty() %}
+    <form method="get" action="/schedule" class="flex items-center gap-2">
+        <select name="week" onchange="this.form.submit()" class="input" aria-label="Week">
+            {% for (w, ms) in weeks %}
+                <option value="{{ w }}" {% if *w == week %}selected{% endif %}>Week {{ w }}{% if ms[0].is_playoff %} · playoffs{% endif %}</option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="btn">Go</button></noscript>
+    </form>
+    {% endif %}
+</div>
+
+{% if season.is_none() || weeks.is_empty() %}
+<div class="py-24 flex flex-col items-center gap-4 text-faint">
+    {% call ui::pokeball("w-10 h-10") %}{% endcall %}
+    <p>
+        {% if season.is_none() %}No active season yet.{% else %}No schedule yet.{% endif %}
+        {% if layout.is_admin %}<a href="/admin" class="text-ink underline underline-offset-4">Set one up.</a>{% endif %}
+    </p>
+</div>
+{% endif %}
+
+{% for (w, matches) in weeks %}
+{% if *w == week %}
+<section class="mt-8">
+    <h2 class="flex items-center gap-3">
+        <span class="label">Week {{ w }}</span>
+        {% if matches[0].is_playoff %}
+            <span class="inline-flex items-center gap-2 text-xs text-muted"><span class="w-2 h-2 rounded-full bg-warn"></span>Playoffs</span>
+        {% endif %}
+    </h2>
+    <ul class="card p-0 mt-4 divide-y divide-line overflow-hidden">
+        {% for m in matches %}
+            {% let a_won = m.winner.is_some() && m.winner == m.coach_a %}
+            {% let b_won = m.winner.is_some() && m.winner == m.coach_b %}
+            <li>
+                <a href="/match/{{ m.id }}"
+                   class="grid grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)_1rem] sm:grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)_6rem] items-center gap-3 px-5 h-12 transition-colors duration-150 hover:bg-raised
+                          {% if m.involves(*me) %} bg-raised shadow-[inset_2px_0_0_theme(colors.ink)] {% endif %}">
+                    <span class="truncate text-right {% if a_won %}font-semibold text-gold{% else if m.winner.is_some() %}text-muted{% endif %}">
+                        {% if let Some(t) = m.team_a %}{{ t }}{% else %}<span class="text-faint">TBD</span>{% endif %}
+                    </span>
+                    <span class="text-center text-xs {% if m.is_forfeit %}text-muted{% else %}text-faint{% endif %}">{% if m.is_forfeit %}FF{% else %}vs{% endif %}</span>
+                    <span class="truncate {% if b_won %}font-semibold text-gold{% else if m.winner.is_some() %}text-muted{% endif %}">
+                        {% if let Some(t) = m.team_b %}{{ t }}{% else %}<span class="text-faint">TBD</span>{% endif %}
+                    </span>
+                    <span class="text-xs text-faint whitespace-nowrap text-right">
+                        {% if m.involves(*me) %}<span class="hidden sm:inline text-ink">Your match </span>{% endif %}&rarr;
+                    </span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endfor %}
+{% endblock %}

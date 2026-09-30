@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT NOT EXISTS(SELECT 1 FROM person) AS \"e!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "e!: bool",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e9d2df9be60936dad9c6c6082598361f50952d207d3c6650bb4b8c1916cebd07"
+}

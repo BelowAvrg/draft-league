@@ -1,0 +1,55 @@
+{% import "macros.html" as ui -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} — Draft League</title>
+    <link rel="preload" href="/static/fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/static/app.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+    <style>[x-cloak] { display: none !important; }</style>
+</head>
+<body class="min-h-screen bg-canvas text-ink font-sans text-sm antialiased [color-scheme:dark]">
+    <header class="sticky top-0 z-10 bg-surface/90 backdrop-blur border-b border-line">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-wrap items-center gap-x-8">
+            <a href="/" class="flex items-center gap-2.5 h-14 font-semibold tracking-tight">
+                {% call ui::pokeball("w-5 h-5") %}{% endcall %}
+                Draft League
+            </a>
+            <nav class="order-last sm:order-none w-full sm:w-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-3 sm:pb-0
+                        flex gap-6 overflow-x-auto">
+                <a href="/board" class="nav-link" {% if layout.page == "board" %}aria-current="page"{% endif %}>Board</a>
+                {% if layout.name.is_some() %}
+                    <a href="/roster/mine" class="nav-link" {% if layout.page == "roster" %}aria-current="page"{% endif %}>Your roster</a>
+                {% endif %}
+                <a href="/pokemon" class="nav-link" {% if layout.page == "pokemon" %}aria-current="page"{% endif %}>Tier list</a>
+                <a href="/schedule" class="nav-link" {% if layout.page == "schedule" %}aria-current="page"{% endif %}>Schedule</a>
+                <a href="/standings" class="nav-link" {% if layout.page == "standings" %}aria-current="page"{% endif %}>Standings</a>
+                {% if layout.is_admin %}
+                    <a href="/admin" class="nav-link" {% if layout.page == "admin" %}aria-current="page"{% endif %}>Admin</a>
+                {% endif %}
+            </nav>
+            <div class="ml-auto flex items-center gap-4">
+                {% match layout.name %}
+                {% when Some with (name) %}
+                    <a href="/profile" class="nav-link">{{ name }}</a>
+                    <a href="/logout" class="nav-link">Log out</a>
+                {% when None %}
+                    <a href="/login" class="btn">Log in with Discord</a>
+                {% endmatch %}
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        {% if let Some(msg) = layout.flash.ok %}
+            <div class="callout border-l-live mb-8" role="status">{{ msg }}</div>
+        {% endif %}
+        {% if let Some(msg) = layout.flash.err %}
+            <div class="callout border-l-danger mb-8" role="alert">{{ msg }}</div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

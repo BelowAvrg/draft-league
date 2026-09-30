@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE match SET winner_coach_id = ?, differential = ?, is_forfeit = ?, result_source = ?\n         WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "6d247229918eafcb44ceaeec029335b700223170e5850446be4a92284f0e0a51"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO pick (coach_id, season_id, pokemon_id, pick_number, points_paid)\n             VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "2860d3c84847e941d489c4fa4f5f6bb6f0a781db156052454786811b1a43d8ec"
+}

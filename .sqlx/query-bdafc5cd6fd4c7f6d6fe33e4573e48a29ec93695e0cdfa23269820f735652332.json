@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO queue_slot (coach_id, slot_number, pokemon_id) VALUES (?, ?, ?)\n             ON CONFLICT (coach_id, slot_number) DO UPDATE SET pokemon_id = excluded.pokemon_id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "bdafc5cd6fd4c7f6d6fe33e4573e48a29ec93695e0cdfa23269820f735652332"
+}

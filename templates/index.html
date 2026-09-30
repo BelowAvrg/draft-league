@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Draft board{% endblock %}
+
+{% block content %}
+{% match board %}
+{% when Some with (b) %}
+<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Draft board</h1>
+<p class="mt-1 text-muted">
+    {{ b.season.name }} · rosters of {{ b.season.min_roster }}–{{ b.season.max_roster }} ·
+    <span class="tabular-nums">{{ b.pool.len() }}</span> Pokémon left
+</p>
+
+{# The pick form only renders on your turn, but /draft/pick re-checks server-side. #}
+{% if let Some(me) = my_turn %}
+    <form method="post" action="/draft/pick" class="card mt-8 border-line-strong" x-data="{ q: '' }">
+        <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+            <div>
+                <p class="label">Round {{ b.turn.round }}</p>
+                <h2 class="mt-1 text-xl font-semibold flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full bg-live animate-pulse"></span>You're on the clock
+                </h2>
+            </div>
+            <p class="text-muted tabular-nums">
+                <span class="text-ink font-semibold">{{ me.remaining }}</span> pts left
+                {% if me.reserve > 0 %}· keep {{ me.reserve }} back to reach {{ b.season.min_roster }}{% endif %}
+            </p>
+        </div>
+
+        {% if affordable.is_empty() %}
+            <p class="mt-4 text-muted">Nothing left you can afford.</p>
+        {% else %}
+            <input x-model="q" type="search" placeholder="Filter {{ affordable.len() }} Pokémon you can afford"
+                   class="input w-full mt-5" aria-label="Filter Pokémon">
+            <ul class="mt-3 -mx-2 max-h-[26rem] overflow-y-auto">
+                {% for l in affordable %}
+                    {% call ui::pick_row(l, 48) %}{% endcall %}
+                {% endfor %}
+            </ul>
+            <div class="mt-4 flex justify-end">
+                <button type="submit" class="btn-primary">Draft</button>
+            </div>
+        {% endif %}
+    </form>
+{% else %}
+    {% match b.turn.coach_id %}
+    {% when Some with (id) %}
+        <a href="/roster/{{ id }}" class="card mt-8 flex items-center justify-between gap-4 hover:border-line-strong transition-colors duration-150">
+            <div>
+                <p class="label">Round {{ b.turn.round }}</p>
+                <p class="mt-1 text-xl font-semibold">
+                    {% if let Some(name) = on_the_clock %}{{ name }}{% endif %}
+                    <span class="text-muted font-normal">is on the clock</span>
+                </p>
+            </div>
+            <span class="w-2.5 h-2.5 rounded-full bg-live animate-pulse"></span>
+        </a>
+    {% when None %}
+        <div class="callout border-l-faint mt-8">
+            The draft is complete. Every coach is full, finished, or out of points.
+        </div>
+    {% endmatch %}
+{% endif %}
+
+{% if let Some(me) = can_finish %}
+    <form method="post" action="/draft/done" class="card mt-4 flex flex-wrap items-center justify-between gap-4">
+        <p class="text-muted">
+            <span class="text-ink font-medium">You have {{ me.picks }} Pokémon.</span>
+            Stopping here is final. Only an admin can reopen your draft.
+        </p>
+        <button type="submit" class="btn-danger"
+            onclick="return confirm('Finish your draft at {{ me.picks }} Pokémon? This cannot be undone.')">
+            I'm done
+        </button>
+    </form>
+{% endif %}
+
+<section class="card p-0 mt-10">
+    <h2 class="label px-5 pt-5">Coaches</h2>
+    <div class="overflow-x-auto">
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th class="w-10">#</th>
+                    <th>Coach</th>
+                    <th class="text-right">Picks</th>
+                    <th class="text-right">Left</th>
+                    <th class="text-right hidden sm:table-cell">Queued</th>
+                    <th class="hidden sm:table-cell">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr class="{% if row.on_clock %}bg-raised{% endif %}">
+                        <td class="font-mono text-xs text-faint {% if row.on_clock %}shadow-[inset_2px_0_0_theme(colors.ink)]{% endif %}">
+                            {{ "{:02}"|format(row.draft_position) }}
+                        </td>
+                        <td>
+                            <a href="/roster/{{ row.coach_id }}" class="block max-w-[7.5rem] sm:max-w-[14rem] truncate font-medium hover:underline underline-offset-4">{{ row.name }}</a>
+                        </td>
+                        <td class="text-right">{{ row.picks }}<span class="text-faint hidden sm:inline"> / {{ b.season.max_roster }}</span></td>
+                        <td class="text-right">
+                            <span class="font-semibold">{{ row.remaining }}</span><span class="text-faint hidden sm:inline"> / {{ row.budget }}</span>
+                            <div class="ml-auto mt-1.5 w-20 h-1 rounded-full bg-raised overflow-hidden">
+                                <div class="h-full bg-ink" style="width: {{ row.remaining * 100 / row.budget }}%"></div>
+                            </div>
+                        </td>
+                        <td class="text-right hidden sm:table-cell {% if row.queued == 0 %}text-faint{% endif %}">{{ row.queued }}</td>
+                        <td class="hidden sm:table-cell">{% call ui::status(row.status, row.on_clock) %}{% endcall %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% when None %}
+<div class="py-24 flex flex-col items-center gap-4 text-faint">
+    {% call ui::pokeball("w-10 h-10") %}{% endcall %}
+    <p>
+        No active season yet.
+        {% if layout.is_admin %}<a href="/admin" class="text-ink underline underline-offset-4">Set one up.</a>{% endif %}
+    </p>
+</div>
+{% endmatch %}
+{% endblock %}

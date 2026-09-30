@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coach SET done_at = NULL\n             WHERE id = ? AND (SELECT COUNT(*) FROM pick WHERE coach_id = ?) < ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "1432b2108087c8ba13a1826af437c7df7d2ac0f76bc4e355a190594662adaa6d"
+}

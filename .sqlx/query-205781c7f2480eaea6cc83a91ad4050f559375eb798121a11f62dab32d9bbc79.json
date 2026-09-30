@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE person SET showdown_username = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "205781c7f2480eaea6cc83a91ad4050f559375eb798121a11f62dab32d9bbc79"
+}

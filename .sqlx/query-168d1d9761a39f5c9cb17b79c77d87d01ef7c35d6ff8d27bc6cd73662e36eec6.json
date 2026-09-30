@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO cost (season_id, pokemon_id, points) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "168d1d9761a39f5c9cb17b79c77d87d01ef7c35d6ff8d27bc6cd73662e36eec6"
+}

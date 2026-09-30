@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, coach_id, pokemon_id, pick_number FROM pick\n             WHERE season_id = ? ORDER BY id DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "coach_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "coach_id"
+          }
+        }
+      },
+      {
+        "name": "pokemon_id",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "pick_number",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "pick_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f7cb000212fce9be4aa70486ce02ab187fa394e059ff1470e77617f943c16e3d"
+}

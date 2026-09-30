@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE coach SET done_at = datetime('now') WHERE id = ? AND done_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "957119aa70a6f5a3c318421c0e714acf5731ff39ba9b67df6f2379d5e819e7be"
+}
