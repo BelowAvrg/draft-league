@@ -85,8 +85,6 @@ struct BoardRow {
     picks: i64,
     budget: i64,
     remaining: i64,
-    queued: i64,
-    status: &'static str,
     on_clock: bool,
     /// Drafted Pokémon in pick order, shown as a sprite strip under the row.
     team: Vec<Pick>,
@@ -160,7 +158,6 @@ async fn index(
     };
 
     let coaches = db.coaches(board.season.id).await?;
-    let queued = db.queue_counts(board.season.id).await?;
     // Every pick this season, newest first; reversed per coach into pick order.
     let picks = db.recent_picks(board.season.id, i64::MAX).await?;
     for coach in &coaches {
@@ -173,8 +170,6 @@ async fn index(
             picks: seat.picks,
             budget: coach.budget,
             remaining: seat.remaining,
-            queued: queued.iter().find(|(id, _)| *id == coach.id).map_or(0, |(_, n)| *n),
-            status: board.standing(seat).label(),
             on_clock,
             team: picks.iter().rev().filter(|p| p.coach_id == coach.id).cloned().collect(),
         });
