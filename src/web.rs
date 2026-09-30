@@ -88,6 +88,8 @@ struct BoardRow {
     queued: i64,
     status: &'static str,
     on_clock: bool,
+    /// Drafted Pokémon in pick order, shown as a sprite strip under the row.
+    team: Vec<Pick>,
 }
 
 /// What the signed-in coach needs to act on their own turn.
@@ -159,6 +161,8 @@ async fn index(
 
     let coaches = db.coaches(board.season.id).await?;
     let queued = db.queue_counts(board.season.id).await?;
+    // Every pick this season, newest first; reversed per coach into pick order.
+    let picks = db.recent_picks(board.season.id, i64::MAX).await?;
     for coach in &coaches {
         let Some(seat) = board.seat_of(coach.id) else { continue };
         let on_clock = board.turn.coach_id == Some(coach.id);
@@ -172,6 +176,7 @@ async fn index(
             queued: queued.iter().find(|(id, _)| *id == coach.id).map_or(0, |(_, n)| *n),
             status: board.standing(seat).label(),
             on_clock,
+            team: picks.iter().rev().filter(|p| p.coach_id == coach.id).cloned().collect(),
         });
         if on_clock {
             page.on_the_clock = Some(coach.discord_username.clone());
@@ -244,8 +249,6 @@ struct RosterTemplate {
     reserve: i64,
     /// Empty slots still needed to reach the minimum.
     open_required: i64,
-    /// Empty slots between the minimum (or current size) and the maximum.
-    open_optional: i64,
 }
 
 /// One coach's roster. Public: completed picks are visible to everyone.
@@ -282,7 +285,6 @@ async fn roster(
             reserve: seat.map_or(0, |s| draft::reserve(s.picks, board.roster, &board.pool)),
             on_clock: board.turn.coach_id == Some(id),
             open_required: (min - drafted).max(0),
-            open_optional: (max - drafted.max(min)).max(0),
             min_roster: min,
             max_roster: max,
             coach,

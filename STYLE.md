@@ -154,10 +154,9 @@ greyscale at 40% opacity. It is not struck through.
 with the name (truncated) on the left and the cost on the right, then the type
 badges. The pick number sits in the top corner in mono.
 
-**Party slots.** A roster is shown as its slots, not just a list of picks. It has 8
-required slots and 4 optional ones, and an empty slot is a dashed `line`
-outline. Empty required slots are drawn stronger than empty optional ones, so
-"how many do I still need" is visible without reading a number.
+**Party slots.** A roster is shown as its slots, not just a list of picks. Empty slots
+up to the minimum of 8 are drawn as a dashed outline, so "how many do I still
+need" is visible without reading a number. Slots past the minimum are not drawn.
 
 ## Stat bars
 

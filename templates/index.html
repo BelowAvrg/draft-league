@@ -109,6 +109,18 @@
                         <td class="text-right hidden sm:table-cell {% if row.queued == 0 %}text-faint{% endif %}">{{ row.queued }}</td>
                         <td class="hidden sm:table-cell">{% call ui::status(row.status, row.on_clock) %}{% endcall %}</td>
                     </tr>
+                    {% if !row.team.is_empty() %}
+                    <tr class="{% if row.on_clock %}bg-raised{% endif %}">
+                        <td colspan="6" class="pt-0 border-t-0 {% if row.on_clock %}shadow-[inset_2px_0_0_theme(colors.ink)]{% endif %}">
+                            <ul class="flex flex-wrap gap-1 pl-10 sm:pl-12">
+                                {% for p in row.team %}
+                                    <li><img src="/static/sprites/{{ p.slug }}.png" alt="{{ p.display_name }}" title="{{ p.display_name }} · {{ p.points_paid }} pts"
+                                             width="32" height="32" class="sprite"></li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endif %}
                 {% endfor %}
             </tbody>
         </table>
