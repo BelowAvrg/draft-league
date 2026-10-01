@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE match SET scheduled_at = datetime(?, 'unixepoch') WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ebe4e105d67da136c26ea86df2ae44495747c2ebda77adc21411a72af13a3599"
+}

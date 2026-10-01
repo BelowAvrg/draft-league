@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO trade_offer (season_id, from_coach_id, to_coach_id) VALUES (?, ?, ?)\n             RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "cdfaeabf050b6d75786ad48b0d3241e43763ae85288c32d644885cc64e8e281c"
+}

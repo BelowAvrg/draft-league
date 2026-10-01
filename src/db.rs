@@ -82,6 +82,16 @@ impl Db {
         .await
     }
 
+    /// A Pokémon's display name.
+    ///
+    /// # Errors
+    /// Fails on database error.
+    pub async fn pokemon_name(&self, id: i64) -> Result<Option<String>, sqlx::Error> {
+        sqlx::query_scalar!("SELECT display_name FROM pokemon WHERE id = ?", id)
+            .fetch_optional(&self.pool)
+            .await
+    }
+
     /// The active season, if one is set up.
     ///
     /// # Errors

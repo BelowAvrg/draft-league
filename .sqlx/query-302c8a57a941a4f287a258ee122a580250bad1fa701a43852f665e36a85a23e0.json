@@ -1,0 +1,57 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT (SELECT COUNT(*) FROM pick WHERE season_id = ?) AS \"number!: i64\",\n                      p.discord_id, m.display_name, pk.points_paid\n               FROM pick pk\n               JOIN coach c ON c.id = pk.coach_id\n               JOIN person p ON p.id = c.person_id\n               JOIN pokemon m ON m.id = pk.pokemon_id\n               WHERE pk.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "number!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "discord_id",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_id"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "points_paid",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "points_paid"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "302c8a57a941a4f287a258ee122a580250bad1fa701a43852f665e36a85a23e0"
+}

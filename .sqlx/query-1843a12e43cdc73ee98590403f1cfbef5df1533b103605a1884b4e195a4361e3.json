@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT m.id AS \"pokemon_id!: i64\", m.slug, m.display_name, m.types,\n                      ct.points AS \"points!: i64\",\n                      p.discord_username AS \"taken_by?: String\"\n               FROM cost ct\n               JOIN pokemon m ON m.id = ct.pokemon_id\n               LEFT JOIN pick pk ON pk.pokemon_id = ct.pokemon_id AND pk.season_id = ct.season_id\n               LEFT JOIN coach c ON c.id = pk.coach_id\n               LEFT JOIN person p ON p.id = c.person_id\n               WHERE ct.season_id = ?\n               ORDER BY ct.points DESC, m.display_name",
+  "query": "SELECT m.id AS \"pokemon_id!: i64\", m.slug, m.display_name, m.types,\n                      ct.points AS \"points!: i64\",\n                      p.discord_username AS \"taken_by?: String\", c.id AS \"owner_id?: i64\"\n               FROM cost ct\n               JOIN pokemon m ON m.id = ct.pokemon_id\n               LEFT JOIN roster_entry re ON re.pokemon_id = ct.pokemon_id\n                                        AND re.season_id = ct.season_id AND re.until_week IS NULL\n               LEFT JOIN coach c ON c.id = re.coach_id\n               LEFT JOIN person p ON p.id = c.person_id\n               WHERE ct.season_id = ?\n               ORDER BY ct.points DESC, m.display_name",
   "describe": {
     "columns": [
       {
@@ -68,6 +68,17 @@
             "name": "discord_username"
           }
         }
+      },
+      {
+        "name": "owner_id?: i64",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -79,8 +90,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "dd7379a2316489e0da51b02518de069d7e51bb07b697ab1434027169ab882df8"
+  "hash": "1843a12e43cdc73ee98590403f1cfbef5df1533b103605a1884b4e195a4361e3"
 }

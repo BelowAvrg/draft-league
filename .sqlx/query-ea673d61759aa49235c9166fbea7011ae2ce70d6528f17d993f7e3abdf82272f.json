@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE match SET coach_a_id = ?, coach_b_id = ?, scheduled_at = NULL WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ea673d61759aa49235c9166fbea7011ae2ce70d6528f17d993f7e3abdf82272f"
+}

@@ -12,14 +12,14 @@
     <p>No tier list imported yet.</p>
 </div>
 {% else %}
-<p class="mt-1 text-muted tabular-nums">{{ listings.len() }} Pokémon · {{ taken }} drafted</p>
+<p class="mt-1 text-muted tabular-nums">{{ listings.len() }} Pokémon · {{ taken }} taken</p>
 
-<div x-data="{ q: '', hideTaken: false }">
+<div x-data="{ q: '', hideTaken: false, pickup: { id: 0, name: '' } }">
     <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
         <input x-model="q" type="search" placeholder="Filter by name" aria-label="Filter by name"
                class="input w-full sm:w-72">
         <label class="flex items-center gap-2 h-10 text-muted cursor-pointer">
-            <input type="checkbox" x-model="hideTaken" class="w-4 h-4"> Hide drafted
+            <input type="checkbox" x-model="hideTaken" class="w-4 h-4"> Hide taken
         </label>
     </div>
 
@@ -30,7 +30,8 @@
                     <th>Pokémon</th>
                     <th class="hidden sm:table-cell">Type</th>
                     <th class="text-right">Cost</th>
-                    <th class="hidden sm:table-cell">Drafted by</th>
+                    <th class="hidden sm:table-cell">Coach</th>
+                    {% if !droppable.is_empty() %}<th><span class="sr-only">Moves</span></th>{% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -62,11 +63,57 @@
                             {% when None %}<span class="inline-flex items-center gap-2 text-muted"><span class="w-2 h-2 rounded-full bg-live"></span>Available</span>
                             {% endmatch %}
                         </td>
+                        {% if !droppable.is_empty() %}
+                        <td class="py-1.5 text-right">
+                            {% if let Some(owner) = l.owner_id %}
+                            {% if l.owner_id != self.me %}
+                            <a href="/roster/{{ owner }}?offer={{ l.pokemon_id }}" class="btn btn-sm">Trade</a>
+                            {% endif %}
+                            {% else %}
+                            <button type="button" class="btn btn-sm"
+                                    @click="pickup = { id: {{ l.pokemon_id }}, name: $el.dataset.name }; $refs.fa.showModal()"
+                                    data-name="{{ l.display_name }}">Pick up</button>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     </section>
+
+    {# Rendered only for a coach with moves left after the draft; /roster/free-agency re-checks everything. #}
+    {% if !droppable.is_empty() %}
+    <dialog x-ref="fa" class="card w-[min(32rem,calc(100vw-2rem))] max-h-[90vh] m-auto p-0 text-ink backdrop:bg-black/70">
+        <form method="post" action="/roster/free-agency" class="p-5">
+            <input type="hidden" name="pokemon_id" :value="pickup.id">
+            <div class="flex items-baseline justify-between gap-4">
+                <h2 class="text-[15px] font-semibold">Pick up <span x-text="pickup.name"></span></h2>
+                <p class="text-xs text-muted tabular-nums">{{ moves_left }} of {{ crate::moves::MAX_MOVES }} moves left</p>
+            </div>
+            <p class="mt-1 text-muted">Choose one of yours to drop. It uses a move, and plays from your next week.</p>
+            <ul class="mt-4 -mx-2 max-h-72 overflow-y-auto">
+                {% for p in droppable %}
+                <li>
+                    <label class="flex items-center gap-3 px-2 py-1 rounded-lg cursor-pointer transition-colors duration-150
+                                  hover:bg-raised has-[:checked]:bg-raised has-[:checked]:ring-1 has-[:checked]:ring-ink/50
+                                  has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink">
+                        <input type="radio" name="drop" value="{{ p.pokemon_id }}" required class="sr-only">
+                        <img src="/static/sprites/{{ p.slug }}.png" alt="" width="32" height="32" class="sprite shrink-0">
+                        <span class="flex-1 min-w-0 font-medium truncate">{{ p.display_name }}</span>
+                        <span class="w-16 text-right tabular-nums font-semibold">{{ p.points }}<span class="text-faint font-normal"> pts</span></span>
+                    </label>
+                </li>
+                {% endfor %}
+            </ul>
+            <div class="mt-5 flex justify-end gap-3">
+                <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
+                <button type="submit" class="btn-primary"
+                        onclick="return confirm('Make this swap? It uses one of your {{ crate::moves::MAX_MOVES }} moves and cannot be undone.')">Swap</button>
+            </div>
+        </form>
+    </dialog>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

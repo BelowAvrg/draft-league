@@ -35,6 +35,7 @@ fn result(winner: i64, loser: i64, diff: i64) -> Match {
         differential: Some(diff),
         is_forfeit: false,
         best_of: 3,
+        scheduled_at: None,
     }
 }
 

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO move (season_id, kind, coach_a_id, effective_week)\n             VALUES (?, 'free_agency', ?, ?) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "move",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "1efd6ee8395370ffa46bbe5a373467fa3bd7d4613d8d4eee3e92666d66381aa0"
+}

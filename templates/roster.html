@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% import "macros.html" as ui %}
 
+{# A checkbox row for one side of the offer. #}
+{% macro trade_row(p, field) %}
+<li>
+    <label class="flex items-center gap-3 px-2 py-1 rounded-lg cursor-pointer transition-colors duration-150
+                  hover:bg-raised has-[:checked]:bg-raised has-[:checked]:ring-1 has-[:checked]:ring-ink/50
+                  has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ink">
+        <input type="checkbox" name="{{ field }}" value="{{ p.pokemon_id }}" x-model="{{ field }}" class="sr-only">
+        <img src="/static/sprites/{{ p.slug }}.png" alt="" width="32" height="32" class="sprite shrink-0">
+        <span class="flex-1 min-w-0 font-medium truncate">{{ p.display_name }}</span>
+        <span class="w-16 text-right tabular-nums font-semibold">{{ p.points }}<span class="text-faint font-normal"> pts</span></span>
+    </label>
+</li>
+{% endmacro %}
+
 {% block title %}{{ coach.discord_username }}{% endblock %}
 
 {% block content %}
@@ -11,10 +25,16 @@
         <h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">{{ coach.discord_username }}</h1>
         <p class="mt-1 text-muted">
             {% if let Some(team) = coach.team_name %}{{ team }} · {% endif %}
-            {{ picks.len() }} / {{ max_roster }} drafted
+            {{ size }} / {{ max_roster }} Pokémon
+            {% if let Some(used) = moves_used %}· {{ used }} / {{ max_moves }} moves{% endif %}
         </p>
     </div>
-    {% call ui::status(status, on_clock) %}{% endcall %}
+    <div class="flex items-center gap-4">
+        {% call ui::status(status, on_clock) %}{% endcall %}
+        {% if trade.is_some() %}
+            <button type="button" class="btn-primary" onclick="document.getElementById('propose').showModal()">Propose trade</button>
+        {% endif %}
+    </div>
 </div>
 
 {# Budget as a base-stat bar: spent, then the reserve held back to reach the minimum. #}
@@ -48,18 +68,34 @@
     </div>
 
     <ol class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-        {% for p in picks %}
+        {% for p in roster %}
             {% let primary = p.types.split_whitespace().next().unwrap_or("normal")|lower %}
-            <li class="card p-4 relative type-{{ primary }}">
-                <span class="absolute top-3 right-4 font-mono text-xs text-faint">{{ "{:02}"|format(p.pick_number) }}</span>
+            <li class="card p-4 relative type-{{ primary }} {% if p.leaves.is_some() %}opacity-40 {% endif %}">
+                {% if let Some(n) = p.pick_number %}
+                    <span class="absolute top-3 right-4 font-mono text-xs text-faint">{{ "{:02}"|format(n) }}</span>
+                {% endif %}
+                {% if let Some(w) = p.joins %}
+                    <span class="absolute top-3 left-4 inline-flex items-center gap-1.5 text-xs text-muted"><span class="w-2 h-2 rounded-full bg-warn"></span>Joins week {{ w }}</span>
+                {% else if let Some(w) = p.leaves %}
+                    <span class="absolute top-3 left-4 inline-flex items-center gap-1.5 text-xs text-muted"><span class="w-2 h-2 rounded-full bg-warn"></span>Leaves week {{ w }}</span>
+                {% endif %}
                 <div class="sprite-glow w-24 h-24 mx-auto">
                     <img src="/static/sprites/{{ p.slug }}.png" alt="" width="96" height="96" class="sprite">
                 </div>
                 <div class="mt-2 flex items-baseline justify-between gap-2">
                     <p class="font-semibold truncate">{{ p.display_name }}</p>
-                    <span class="tabular-nums font-semibold whitespace-nowrap">{{ p.points_paid }}<span class="text-faint font-normal"> pts</span></span>
+                    <span class="tabular-nums font-semibold whitespace-nowrap">{{ p.points }}<span class="text-faint font-normal"> pts</span></span>
                 </div>
                 <div class="mt-2">{% call ui::types(p.types) %}{% endcall %}</div>
+                {% if let Some(x) = self.stats_of(*p.pokemon_id) %}
+                <p class="mt-3 pt-3 border-t border-line flex justify-between text-xs text-faint tabular-nums">
+                    <span><span class="text-ink font-semibold">{{ x.played }}</span> played</span>
+                    <span title="{{ x.direct_kos }} direct, {{ x.passive_kos }} passive"><span class="text-ink font-semibold">{{ x.kos() }}</span> KO{% if x.kos() != 1 %}s{% endif %}</span>
+                    <span><span class="text-ink font-semibold">{{ x.fainted }}</span> fainted</span>
+                </p>
+                {% else if !stats.is_empty() %}
+                <p class="mt-3 pt-3 border-t border-line text-center text-xs text-faint">Not in a replay yet</p>
+                {% endif %}
             </li>
         {% endfor %}
         {% for _ in 0..open_required %}
@@ -67,4 +103,61 @@
         {% endfor %}
     </ol>
 </section>
+
+{# Rendered only when the viewer can offer this coach a trade; the accept re-checks everything. #}
+{% if let Some(t) = trade %}
+<dialog id="propose" class="card w-[min(48rem,calc(100vw-2rem))] max-h-[90vh] m-auto p-0 text-ink backdrop:bg-black/70">
+    <form method="post" action="/trades/propose" class="p-5"
+          x-init="if (get.length) $el.closest('dialog').showModal()"
+          x-data="{ give: [], get: new URLSearchParams(location.search).getAll('offer'),
+                    pts: { {% for p in t.mine %}'{{ p.pokemon_id }}': {{ p.points }}, {% endfor %}{% for p in roster %}'{{ p.pokemon_id }}': {{ p.points }}, {% endfor %} },
+                    sum(ids) { return ids.reduce((t, id) => t + this.pts[id], 0) } }">
+        <input type="hidden" name="to" value="{{ coach.id }}">
+        <h2 class="text-[15px] font-semibold">Trade with {{ coach.discord_username }}</h2>
+        <p class="mt-1 text-muted">They accept or decline. If it goes through it uses one move from each of you, and plays from the week after.</p>
+
+        <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div class="min-w-0">
+                <p class="label">You give</p>
+                <ul class="mt-2 -mx-2 max-h-64 overflow-y-auto">
+                    {% for p in t.mine %}{% call trade_row(p, "give") %}{% endcall %}{% endfor %}
+                </ul>
+            </div>
+            <div class="min-w-0">
+                <p class="label">You get</p>
+                <ul class="mt-2 -mx-2 max-h-64 overflow-y-auto">
+                    {% for p in roster %}
+                        {% if p.joins.is_none() && p.leaves.is_none() %}{% call trade_row(p, "get") %}{% endcall %}{% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        {# Totals once this and every pending move land. #}
+        <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs text-muted tabular-nums">
+            <div x-data="{ get n() { return {{ t.my_size }} - give.length + get.length },
+                           get c() { return {{ t.me.spent }} - sum(give) + sum(get) } }">
+                <dt class="inline">You:</dt>
+                <dd class="inline">
+                    <span :class="(n < {{ min_roster }} || n > {{ max_roster }}) && 'text-danger'"><span class="text-ink" x-text="n">{{ t.my_size }}</span> Pokémon</span> ·
+                    <span :class="c > {{ t.me.budget }} && 'text-danger'"><span class="text-ink" x-text="c">{{ t.me.spent }}</span> of {{ t.me.budget }} pts</span>
+                </dd>
+            </div>
+            <div x-data="{ get n() { return {{ size }} - get.length + give.length },
+                           get c() { return {{ coach.spent }} - sum(get) + sum(give) } }">
+                <dt class="inline">{{ coach.discord_username }}:</dt>
+                <dd class="inline">
+                    <span :class="(n < {{ min_roster }} || n > {{ max_roster }}) && 'text-danger'"><span class="text-ink" x-text="n">{{ size }}</span> Pokémon</span> ·
+                    <span :class="c > {{ coach.budget }} && 'text-danger'"><span class="text-ink" x-text="c">{{ coach.spent }}</span> of {{ coach.budget }} pts</span>
+                </dd>
+            </div>
+        </dl>
+
+        <div class="mt-5 flex justify-end gap-3">
+            <button type="button" class="btn" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="btn-primary" :disabled="!give.length || !get.length">Send offer</button>
+        </div>
+    </form>
+</dialog>
+{% endif %}
 {% endblock %}

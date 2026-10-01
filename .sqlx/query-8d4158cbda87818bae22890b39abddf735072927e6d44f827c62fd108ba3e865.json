@@ -1,0 +1,144 @@
+{
+  "db_name": "SQLite",
+  "query": "WITH gm AS (\n                   SELECT gm.*, m.week, g.winner_coach_id FROM game_mon gm\n                   JOIN coach co ON co.id = gm.coach_id\n                   JOIN game g ON g.id = gm.game_id JOIN match m ON m.id = g.match_id\n                   WHERE co.season_id = ?1\n               ),\n               coach_game AS (SELECT DISTINCT game_id, coach_id, week FROM gm)\n               SELECT gm.coach_id AS \"coach_id!\", gm.pokemon_id AS \"pokemon_id!\",\n                      COALESCE(co.team_name, pe.discord_username) AS \"team!: String\",\n                      p.slug, p.display_name, c.points AS \"cost?\",\n                      COUNT(*) AS \"previewed!: i64\",\n                      (SELECT COUNT(*) FROM coach_game cg\n                       WHERE cg.coach_id = gm.coach_id AND EXISTS (\n                           SELECT 1 FROM roster_entry r\n                           WHERE r.coach_id = cg.coach_id AND r.pokemon_id = gm.pokemon_id\n                             AND r.from_week <= cg.week AND (r.until_week IS NULL OR r.until_week > cg.week))\n                      ) AS \"eligible!: i64\",\n                      SUM(gm.played) AS \"played!: i64\", SUM(gm.led) AS \"led!: i64\",\n                      SUM(gm.played AND gm.winner_coach_id = gm.coach_id) AS \"won!: i64\",\n                      SUM(gm.direct_kos) AS \"direct_kos!: i64\", SUM(gm.passive_kos) AS \"passive_kos!: i64\",\n                      SUM(gm.fainted) AS \"fainted!: i64\", SUM(gm.mega) AS \"mega!: i64\"\n               FROM gm JOIN pokemon p ON p.id = gm.pokemon_id\n               JOIN coach co ON co.id = gm.coach_id JOIN person pe ON pe.id = co.person_id\n               LEFT JOIN cost c ON c.season_id = ?1 AND c.pokemon_id = gm.pokemon_id\n               GROUP BY gm.coach_id, gm.pokemon_id\n               ORDER BY SUM(gm.direct_kos + gm.passive_kos) DESC, SUM(gm.played) DESC, p.display_name",
+  "describe": {
+    "columns": [
+      {
+        "name": "coach_id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "coach_id"
+          }
+        }
+      },
+      {
+        "name": "pokemon_id!",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "team!: String",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "slug",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "cost?",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      },
+      {
+        "name": "previewed!: i64",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "eligible!: i64",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "played!: i64",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "led!: i64",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "won!: i64",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "direct_kos!: i64",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "passive_kos!: i64",
+        "ordinal": 12,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "fainted!: i64",
+        "ordinal": 13,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "mega!: i64",
+        "ordinal": 14,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8d4158cbda87818bae22890b39abddf735072927e6d44f827c62fd108ba3e865"
+}

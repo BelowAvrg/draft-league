@@ -1,0 +1,52 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.discord_username AS name, c.budget,\n                  COUNT(re.id) AS \"size!: i64\", COALESCE(SUM(ct.points), 0) AS \"cost!: i64\"\n           FROM coach c\n           JOIN person p ON p.id = c.person_id\n           LEFT JOIN roster_entry re ON re.coach_id = c.id AND re.until_week IS NULL\n           LEFT JOIN cost ct ON ct.season_id = re.season_id AND ct.pokemon_id = re.pokemon_id\n           WHERE c.id = ?\n           GROUP BY c.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "budget",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "budget"
+          }
+        }
+      },
+      {
+        "name": "size!: i64",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "cost!: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "708082880d40f08993bcf4fc36d4b2dbfa9216e28f4e38c226959b6009624ec0"
+}

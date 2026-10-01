@@ -16,6 +16,16 @@ pub struct Pick {
     pub types: String,
 }
 
+/// A pick a draft action just recorded, as the Discord post lists it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Drafted {
+    /// Position in the whole season's draft, 1-based. Not the coach's own count.
+    pub number: i64,
+    pub discord_id: String,
+    pub pokemon: String,
+    pub points: i64,
+}
+
 /// One draftable Pokémon with this season's price and whether it is taken.
 #[derive(Debug, Clone)]
 pub struct Listing {
@@ -25,8 +35,10 @@ pub struct Listing {
     pub points: i64,
     /// Space-separated, primary type first.
     pub types: String,
-    /// The coach who drafted it, if anyone has.
+    /// The coach who owns it, if anyone does. Pending moves count.
     pub taken_by: Option<String>,
+    /// That owner's coach id.
+    pub owner_id: Option<i64>,
 }
 
 /// Ceiling on one cascade of queue auto-picks.
@@ -169,7 +181,9 @@ impl Db {
         .await
     }
 
-    /// Records a pick for a coach.
+    /// Records a pick for a coach, then any queue auto-picks it sets off.
+    ///
+    /// Returns every pick recorded, in order.
     ///
     /// Re-reads the turn and the budget inside the transaction, so two tabs
     /// cannot both spend the same points. The unique constraints on `pick`
@@ -178,7 +192,7 @@ impl Db {
     /// # Errors
     /// Refuses a pick out of turn, over budget, breaking the reserve, on a
     /// full or finished roster, or for an unpriced or already-drafted Pokémon.
-    pub async fn make_pick(&self, coach_id: i64, pokemon_id: i64) -> Result<(), DraftError> {
+    pub async fn make_pick(&self, coach_id: i64, pokemon_id: i64) -> Result<Vec<Drafted>, DraftError> {
         let board = self.board().await?;
         let seat = *board.seat_of(coach_id).ok_or(DraftError::NotACoach)?;
 
@@ -189,11 +203,12 @@ impl Db {
             return Err(DraftError::NoTierList);
         }
 
-        self.record_pick(&board, &seat, pokemon_id).await?;
+        let first = self.record_pick(&board, &seat, pokemon_id).await?;
 
         // This pick may have put a coach with a ready queue slot on the clock.
-        self.run_queue().await?;
-        Ok(())
+        let mut drafted = vec![first];
+        drafted.extend(self.run_queue().await?);
+        Ok(drafted)
     }
 
     /// Writes one validated pick and breaks any queue bindings it kills.
@@ -206,7 +221,7 @@ impl Db {
         board: &Board,
         seat: &Seat,
         pokemon_id: i64,
-    ) -> Result<(), DraftError> {
+    ) -> Result<Drafted, DraftError> {
         let season_id = board.season.id;
         let coach_id = seat.coach_id;
         let mut tx = self.pool().begin().await?;
@@ -262,9 +277,27 @@ impl Db {
         .execute(&mut *tx)
         .await?;
 
+        // Only the latest pick can be undone, so the count is this pick's place.
+        let drafted = sqlx::query!(
+            r#"SELECT (SELECT COUNT(*) FROM pick WHERE season_id = ?) AS "number!: i64",
+                      p.discord_id, m.display_name
+               FROM coach c JOIN person p ON p.id = c.person_id, pokemon m
+               WHERE c.id = ? AND m.id = ?"#,
+            season_id,
+            coach_id,
+            pokemon_id
+        )
+        .fetch_one(&mut *tx)
+        .await?;
+
         tx.commit().await?;
         tracing::info!(coach_id, pokemon_id, pick_number, cost, "pick recorded");
-        Ok(())
+        Ok(Drafted {
+            number: drafted.number,
+            discord_id: drafted.discord_id,
+            pokemon: drafted.display_name,
+            points: cost,
+        })
     }
 
     /// Auto-picks for whoever is on the clock, as long as their slot resolves.
@@ -277,36 +310,42 @@ impl Db {
     /// A slot that no longer validates -- unaffordable past the minimum, or
     /// breaking the reserve -- also stalls, leaving the coach to pick by hand.
     ///
+    /// Returns the picks it made, in order.
+    ///
     /// # Errors
     /// Fails on database error. A slot that cannot be picked is not an error.
-    async fn run_queue(&self) -> Result<(), DraftError> {
+    async fn run_queue(&self) -> Result<Vec<Drafted>, DraftError> {
         // Bounded by the picks the draft has left, so a slot that somehow
         // fails to clear cannot spin forever.
         let mut guard = 0;
+        let mut drafted = Vec::new();
         loop {
             let board = self.board().await?;
-            let Some(coach_id) = board.turn.coach_id else { return Ok(()) };
-            let Some(seat) = board.seat_of(coach_id).copied() else { return Ok(()) };
+            let Some(coach_id) = board.turn.coach_id else { return Ok(drafted) };
+            let Some(seat) = board.seat_of(coach_id).copied() else { return Ok(drafted) };
 
             guard += 1;
             if guard > MAX_AUTO_PICKS {
                 tracing::error!(coach_id, "queue auto-pick did not settle; stopping");
-                return Ok(());
+                return Ok(drafted);
             }
 
             // Slot N binds to pick N, and nothing else.
             let slot = seat.picks + 1;
-            let Some(pokemon_id) = self.queued_at(coach_id, slot).await? else { return Ok(()) };
+            let Some(pokemon_id) = self.queued_at(coach_id, slot).await? else { return Ok(drafted) };
 
             match self.record_pick(&board, &seat, pokemon_id).await {
-                Ok(()) => tracing::info!(coach_id, slot, pokemon_id, "queue slot auto-picked"),
+                Ok(d) => {
+                    tracing::info!(coach_id, slot, pokemon_id, "queue slot auto-picked");
+                    drafted.push(d);
+                }
                 Err(DraftError::Sqlx(e)) => return Err(e.into()),
                 Err(e) => {
                     // The slot is unpickable now but may become pickable again
                     // (an admin correction frees points or Pokémon), so it
                     // stays put and the coach is simply left on the clock.
                     tracing::info!(coach_id, slot, %e, "queue slot stalled the draft");
-                    return Ok(());
+                    return Ok(drafted);
                 }
             }
         }
@@ -326,11 +365,13 @@ impl Db {
         .await
     }
 
-    /// Marks a coach as finished drafting.
+    /// Marks a coach as finished drafting, then runs the queue.
+    ///
+    /// Returns the coach's pick count and any auto-picks the queue made.
     ///
     /// # Errors
     /// Refuses a roster below the season minimum, or one already finished.
-    pub async fn finish_drafting(&self, coach_id: i64) -> Result<(), DraftError> {
+    pub async fn finish_drafting(&self, coach_id: i64) -> Result<(i64, Vec<Drafted>), DraftError> {
         let board = self.board().await?;
         let seat = board.seat_of(coach_id).ok_or(DraftError::NotACoach)?;
         draft::validate_done(seat, board.roster)?;
@@ -342,19 +383,23 @@ impl Db {
         .execute(self.pool())
         .await?;
         tracing::info!(coach_id, picks = seat.picks, "coach finished drafting");
-        Ok(())
+        // The next coach on the clock may have a ready slot.
+        Ok((seat.picks, self.run_queue().await?))
     }
 
-    /// Clears a coach's finished flag. Admin correction only.
+    /// Clears a coach's finished flag, then runs the queue. Admin correction only.
+    ///
+    /// Returns any auto-picks the queue made.
     ///
     /// # Errors
-    /// Fails on database error.
-    pub async fn reopen_drafting(&self, coach_id: i64) -> Result<(), sqlx::Error> {
+    /// Fails on database error, or when no season is active.
+    pub async fn reopen_drafting(&self, coach_id: i64) -> Result<Vec<Drafted>, DraftError> {
         sqlx::query!("UPDATE coach SET done_at = NULL WHERE id = ?", coach_id)
             .execute(self.pool())
             .await?;
         tracing::info!(coach_id, "coach reopened for drafting");
-        Ok(())
+        // The reopened coach may be back on the clock with a ready slot.
+        self.run_queue().await
     }
 
     /// Undoes the season's latest pick. Admin correction only.
@@ -366,7 +411,9 @@ impl Db {
     ///
     /// A coach who finished early and drops below the minimum is reopened, since
     /// finishing is only allowed at the minimum. Queue slots broken by the pick
-    /// stay broken.
+    /// stay broken. The queue runs afterwards like any other draft action.
+    ///
+    /// Returns the undone pick and any auto-picks the queue made.
     ///
     /// # Errors
     /// Refuses when `(coach_id, pick_number)` is not the season's latest pick,
@@ -376,7 +423,7 @@ impl Db {
         coach_id: i64,
         pick_number: i64,
         admin_id: i64,
-    ) -> Result<(), DraftError> {
+    ) -> Result<(Drafted, Vec<Drafted>), DraftError> {
         let season = self.active_season().await?.ok_or(DraftError::NoSeason)?;
         let mut tx = self.pool().begin().await?;
 
@@ -404,6 +451,19 @@ impl Db {
         )
         .execute(&mut *tx)
         .await?;
+        let undone = sqlx::query!(
+            r#"SELECT (SELECT COUNT(*) FROM pick WHERE season_id = ?) AS "number!: i64",
+                      p.discord_id, m.display_name, pk.points_paid
+               FROM pick pk
+               JOIN coach c ON c.id = pk.coach_id
+               JOIN person p ON p.id = c.person_id
+               JOIN pokemon m ON m.id = pk.pokemon_id
+               WHERE pk.id = ?"#,
+            season.id,
+            last.id
+        )
+        .fetch_one(&mut *tx)
+        .await?;
         sqlx::query!("DELETE FROM pick WHERE id = ?", last.id).execute(&mut *tx).await?;
         sqlx::query!(
             "UPDATE coach SET done_at = NULL
@@ -417,7 +477,13 @@ impl Db {
 
         tx.commit().await?;
         tracing::info!(coach_id, pick_number, pokemon_id = last.pokemon_id, admin_id, "pick undone");
-        Ok(())
+        let undone = Drafted {
+            number: undone.number,
+            discord_id: undone.discord_id,
+            pokemon: undone.display_name,
+            points: undone.points_paid,
+        };
+        Ok((undone, self.run_queue().await?))
     }
 
     /// How many picks each coach has queued, by coach id.
@@ -469,6 +535,8 @@ impl Db {
     /// budget is not checked here: both are settled when the slot is reached,
     /// because the pool and the points will have moved by then.
     ///
+    /// Then runs the queue, and returns any auto-picks it made.
+    ///
     /// # Errors
     /// Refuses a slot at or below the coach's completed picks, a slot past the
     /// roster maximum, an unpriced or already-drafted Pokémon, and a Pokémon
@@ -478,7 +546,7 @@ impl Db {
         coach_id: i64,
         slot_number: i64,
         pokemon_id: i64,
-    ) -> Result<(), DraftError> {
+    ) -> Result<Vec<Drafted>, DraftError> {
         let board = self.board().await?;
         let seat = board.seat_of(coach_id).ok_or(DraftError::NotACoach)?;
 
@@ -543,8 +611,20 @@ impl Db {
         tracing::info!(coach_id, slot_number, "queue slot set");
 
         // Queuing for the slot you are on the clock for picks immediately.
-        self.run_queue().await?;
-        Ok(())
+        self.run_queue().await
+    }
+
+    /// The Discord ID of a coach's person, for mentions.
+    ///
+    /// # Errors
+    /// Fails on database error.
+    pub async fn coach_discord_id(&self, coach_id: i64) -> Result<Option<String>, sqlx::Error> {
+        sqlx::query_scalar!(
+            "SELECT p.discord_id FROM coach c JOIN person p ON p.id = c.person_id WHERE c.id = ?",
+            coach_id
+        )
+        .fetch_optional(self.pool())
+        .await
     }
 
     /// Empties one of a coach's queue slots.
@@ -610,7 +690,7 @@ impl Db {
         .await
     }
 
-    /// The season's tier list, with who has taken what.
+    /// The season's tier list, with who owns what.
     ///
     /// # Errors
     /// Fails on database error.
@@ -619,11 +699,12 @@ impl Db {
             Listing,
             r#"SELECT m.id AS "pokemon_id!: i64", m.slug, m.display_name, m.types,
                       ct.points AS "points!: i64",
-                      p.discord_username AS "taken_by?: String"
+                      p.discord_username AS "taken_by?: String", c.id AS "owner_id?: i64"
                FROM cost ct
                JOIN pokemon m ON m.id = ct.pokemon_id
-               LEFT JOIN pick pk ON pk.pokemon_id = ct.pokemon_id AND pk.season_id = ct.season_id
-               LEFT JOIN coach c ON c.id = pk.coach_id
+               LEFT JOIN roster_entry re ON re.pokemon_id = ct.pokemon_id
+                                        AND re.season_id = ct.season_id AND re.until_week IS NULL
+               LEFT JOIN coach c ON c.id = re.coach_id
                LEFT JOIN person p ON p.id = c.person_id
                WHERE ct.season_id = ?
                ORDER BY ct.points DESC, m.display_name"#,

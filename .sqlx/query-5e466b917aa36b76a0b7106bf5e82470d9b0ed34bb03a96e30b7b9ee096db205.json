@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO game (match_id, replay_id, replay_url, winner_coach_id, a_remaining, b_remaining, created_by, log)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (replay_id) DO NOTHING RETURNING id AS \"id!\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5e466b917aa36b76a0b7106bf5e82470d9b0ed34bb03a96e30b7b9ee096db205"
+}

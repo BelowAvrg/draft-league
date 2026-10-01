@@ -3,11 +3,13 @@
 use std::ops::RangeInclusive;
 
 use sqlx::SqliteConnection;
+use time::OffsetDateTime;
 
 use crate::coaches::season_coaches;
 use crate::db::{Db, Person};
 use crate::replays::{Replay, to_id};
 use crate::standings::standings;
+use crate::stats;
 
 /// Pokémon each side brings to a VGC game: the most a game's winner can have left.
 const BROUGHT: i64 = 4;
@@ -117,6 +119,66 @@ pub fn tally(best_of: i64, games: &[GameScore]) -> Option<(bool, i64)> {
     Some((a_won, differential))
 }
 
+/// A match's label: `Week N`, or `Semifinal` / `Final` in the playoffs.
+///
+/// `last_week` is the season's last week, which only the final is played in.
+#[must_use]
+pub fn match_label(week: i64, is_playoff: bool, last_week: i64) -> String {
+    match is_playoff {
+        false => format!("Week {week}"),
+        true if week == last_week => "Final".to_owned(),
+        true => "Semifinal".to_owned(),
+    }
+}
+
+/// A game just attached by [`Db::add_game`], for announcing it.
+#[derive(Debug, Clone)]
+pub struct GameAdded {
+    /// The match's label, from [`match_label`].
+    pub label: String,
+    /// This game's number in the match, from 1.
+    pub game: usize,
+    pub winner: i64,
+    pub loser: i64,
+    pub winner_remaining: i64,
+    pub loser_remaining: i64,
+    pub replay_url: String,
+    /// The match result, when this game decided it.
+    pub decided: Option<MatchWon>,
+}
+
+/// A match time just written by [`Db::set_schedule`], for announcing it.
+#[derive(Debug, Clone)]
+pub struct Scheduled {
+    /// The match's id.
+    pub match_id: i64,
+    /// The match's label, from [`match_label`].
+    pub label: String,
+    /// Coach ids in slots A and B.
+    pub coaches: [i64; 2],
+    /// The time before this write; `None` if it was unscheduled.
+    pub previous: Option<OffsetDateTime>,
+    /// The time now set; `None` if this write cleared it.
+    pub at: Option<OffsetDateTime>,
+    /// Slot B's Showdown username, as stored.
+    pub opponent_showdown: Option<String>,
+    /// The season's Showdown format id.
+    pub format: Option<String>,
+    /// Games in the match: a best of this many.
+    pub best_of: i64,
+}
+
+/// A match result decided by its replays.
+#[derive(Debug, Clone, Copy)]
+pub struct MatchWon {
+    pub winner: i64,
+    /// Games the winner won.
+    pub won: i64,
+    /// Games the winner lost.
+    pub lost: i64,
+    pub differential: i64,
+}
+
 /// One replay attached to a match, as the match page lists it.
 #[derive(Debug, Clone)]
 pub struct Game {
@@ -154,6 +216,8 @@ pub struct Match {
     pub is_forfeit: bool,
     /// The season's games per match.
     pub best_of: i64,
+    /// When it is to be played, as UTC `YYYY-MM-DDTHH:MM:SSZ`.
+    pub scheduled_at: Option<String>,
 }
 
 impl Match {
@@ -226,7 +290,8 @@ impl Db {
                       COALESCE(ca.team_name, pa.discord_username) AS "team_a?: String",
                       COALESCE(cb.team_name, pb.discord_username) AS "team_b?: String",
                       m.winner_coach_id AS winner, m.differential,
-                      m.is_forfeit AS "is_forfeit!: bool", s.best_of
+                      m.is_forfeit AS "is_forfeit!: bool", s.best_of,
+                      strftime('%Y-%m-%dT%H:%M:%SZ', m.scheduled_at) AS "scheduled_at?: String"
                FROM match m JOIN season s ON s.id = m.season_id
                LEFT JOIN coach ca ON ca.id = m.coach_a_id LEFT JOIN person pa ON pa.id = ca.person_id
                LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id
@@ -323,6 +388,65 @@ impl Db {
         Ok(())
     }
 
+    /// Sets, changes, or clears when a match is to be played.
+    ///
+    /// `None` clears it. Only the match's two coaches or an admin may do this.
+    /// A match with a result can still be rescheduled.
+    ///
+    /// # Errors
+    /// Refuses an unseeded playoff match, and a caller who is neither of its
+    /// coaches nor an admin.
+    pub async fn set_schedule(
+        &self,
+        match_id: i64,
+        by: &Person,
+        at: Option<OffsetDateTime>,
+    ) -> Result<Scheduled, ResultError> {
+        let mut tx = self.pool().begin().await?;
+
+        let m = sqlx::query!(
+            r#"SELECT m.week, m.is_playoff AS "is_playoff!: bool",
+                      (SELECT MAX(week) FROM match WHERE season_id = m.season_id) AS "last_week!: i64",
+                      m.coach_a_id, m.coach_b_id, ca.person_id AS "person_a?: i64", cb.person_id AS "person_b?: i64",
+                      unixepoch(m.scheduled_at) AS "previous?: i64", s.format, s.best_of,
+                      pb.showdown_username AS "showdown_b?: String"
+               FROM match m JOIN season s ON s.id = m.season_id
+               LEFT JOIN coach ca ON ca.id = m.coach_a_id
+               LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id
+               WHERE m.id = ?"#,
+            match_id
+        )
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ResultError::NoMatch)?;
+
+        let (Some(a), Some(b)) = (m.coach_a_id, m.coach_b_id) else {
+            return Err(ResultError::Unseeded);
+        };
+        if !by.is_admin && m.person_a != Some(by.id) && m.person_b != Some(by.id) {
+            return Err(ResultError::NotACoach);
+        }
+
+        let unix = at.map(OffsetDateTime::unix_timestamp);
+        sqlx::query!("UPDATE match SET scheduled_at = datetime(?, 'unixepoch') WHERE id = ?", unix, match_id)
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        tracing::info!(match_id, by = by.id, previous = ?m.previous, at = ?unix, "match scheduled");
+        Ok(Scheduled {
+            match_id,
+            label: match_label(m.week, m.is_playoff, m.last_week),
+            coaches: [a, b],
+            // The column's CHECK keeps stored times in range.
+            previous: m.previous.and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
+            at,
+            opponent_showdown: m.showdown_b,
+            format: m.format,
+            best_of: m.best_of,
+        })
+    }
+
     /// Every replay attached to a match, in upload order.
     ///
     /// # Errors
@@ -352,11 +476,13 @@ impl Db {
     /// unseeded match, a replay in the wrong format, a player who isn't one of
     /// the two coaches, a replay already attached, and a match already decided
     /// by its replays.
-    pub async fn add_game(&self, match_id: i64, by: &Person, replay: &Replay) -> Result<(), ResultError> {
+    pub async fn add_game(&self, match_id: i64, by: &Person, replay: &Replay) -> Result<GameAdded, ResultError> {
         let mut tx = self.pool().begin().await?;
 
         let m = sqlx::query!(
-            r#"SELECT m.season_id, m.coach_a_id, m.coach_b_id, m.winner_coach_id,
+            r#"SELECT m.season_id, m.week, m.is_playoff AS "is_playoff!: bool",
+                      (SELECT MAX(week) FROM match WHERE season_id = m.season_id) AS "last_week!: i64",
+                      m.coach_a_id, m.coach_b_id, m.winner_coach_id,
                       m.differential, m.is_forfeit AS "is_forfeit!: bool", s.best_of, s.format,
                       pa.showdown_username AS "showdown_a?: String",
                       pb.showdown_username AS "showdown_b?: String"
@@ -408,33 +534,49 @@ impl Db {
         }
 
         let winner = if score.a_won { a } else { b };
-        let inserted = sqlx::query!(
-            "INSERT INTO game (match_id, replay_id, replay_url, winner_coach_id, a_remaining, b_remaining, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (replay_id) DO NOTHING",
+        let game_id = sqlx::query_scalar!(
+            "INSERT INTO game (match_id, replay_id, replay_url, winner_coach_id, a_remaining, b_remaining, created_by, log)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (replay_id) DO NOTHING RETURNING id AS \"id!\"",
             match_id,
             replay.id,
             replay.url,
             winner,
             score.a_remaining,
             score.b_remaining,
-            by.id
+            by.id,
+            replay.log
         )
-        .execute(&mut *tx)
-        .await?;
-        if inserted.rows_affected() == 0 {
-            return Err(ResultError::AlreadyAttached);
-        }
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(ResultError::AlreadyAttached)?;
+        let coaches = if p1_is_a { [a, b] } else { [b, a] };
+        stats::store(&mut tx, game_id, m.week, coaches, &replay.log).await?;
 
         games.push(score);
+        let mut decided = None;
         if let Some((a_won, differential)) = tally(m.best_of, &games) {
             let old = Outcome { winner: m.winner_coach_id, differential: m.differential, is_forfeit: m.is_forfeit };
             let new = Outcome { winner: Some(if a_won { a } else { b }), differential: Some(differential), is_forfeit: false };
             record(&mut tx, m.season_id, match_id, by.id, "replay", old, new).await?;
+            let won: i64 = games.iter().map(|g| i64::from(g.a_won == a_won)).sum();
+            let lost: i64 = games.iter().map(|g| i64::from(g.a_won != a_won)).sum();
+            decided = Some(MatchWon { winner: if a_won { a } else { b }, won, lost, differential });
         }
 
         tx.commit().await?;
         tracing::info!(match_id, by = by.id, replay = %replay.id, winner, "replay attached");
-        Ok(())
+        let (winner_remaining, loser_remaining) =
+            if score.a_won { (score.a_remaining, score.b_remaining) } else { (score.b_remaining, score.a_remaining) };
+        Ok(GameAdded {
+            label: match_label(m.week, m.is_playoff, m.last_week),
+            game: games.len(),
+            winner,
+            loser: if score.a_won { b } else { a },
+            winner_remaining,
+            loser_remaining,
+            replay_url: replay.url.clone(),
+            decided,
+        })
     }
 
     /// Detaches a replay from a match, and re-scores a result the replays set.
@@ -521,7 +663,8 @@ async fn season_matches<'e>(
                   COALESCE(ca.team_name, pa.discord_username) AS "team_a?: String",
                   COALESCE(cb.team_name, pb.discord_username) AS "team_b?: String",
                   m.winner_coach_id AS winner, m.differential,
-                  m.is_forfeit AS "is_forfeit!: bool", s.best_of
+                  m.is_forfeit AS "is_forfeit!: bool", s.best_of,
+                  strftime('%Y-%m-%dT%H:%M:%SZ', m.scheduled_at) AS "scheduled_at?: String"
            FROM match m JOIN season s ON s.id = m.season_id
            LEFT JOIN coach ca ON ca.id = m.coach_a_id LEFT JOIN person pa ON pa.id = ca.person_id
            LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id
@@ -625,7 +768,8 @@ async fn fill(
     if m.winner.is_some() || has_games {
         return Err(ResultError::Reseed(round));
     }
-    sqlx::query!("UPDATE match SET coach_a_id = ?, coach_b_id = ? WHERE id = ?", a, b, m.id)
+    // A time the old pairing agreed on doesn't bind the new one.
+    sqlx::query!("UPDATE match SET coach_a_id = ?, coach_b_id = ?, scheduled_at = NULL WHERE id = ?", a, b, m.id)
         .execute(&mut *conn)
         .await?;
     tracing::info!(match_id = m.id, ?a, ?b, round, "playoff match seeded");

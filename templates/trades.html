@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Trades{% endblock %}
+
+{# A strip of small sprites with names, for one side of an offer or move. #}
+{% macro mons(list) %}
+<ul class="flex flex-wrap gap-x-4 gap-y-1">
+    {% for m in list.iter() %}
+        <li class="flex items-center gap-1.5 min-w-0">
+            <img src="/static/sprites/{{ m.slug }}.png" alt="" width="32" height="32" loading="lazy" class="sprite shrink-0">
+            <span class="font-medium truncate">{{ m.display_name }}</span>
+        </li>
+    {% endfor %}
+</ul>
+{% endmacro %}
+
+{% block content %}
+<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Trades</h1>
+<p class="mt-1 text-muted tabular-nums">
+    {% if let Some(used) = moves_used %}{{ used }} / {{ max_moves }} moves used · {% endif %}
+    Moves play from the week after they are made.
+</p>
+
+{% if moves_used.is_some() %}
+<section class="mt-8">
+    <div class="flex items-baseline justify-between mb-4">
+        <h2 class="label">Your offers</h2>
+        <p class="flex items-center gap-1.5 text-xs text-muted">
+            <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+            </svg>
+            Only you and the other coach can see these
+        </p>
+    </div>
+    {% if offers.is_empty() %}
+        <div class="callout border-l-faint">No offers yet. Propose one from another coach's roster.</div>
+    {% else %}
+    <ul class="grid grid-cols-1 gap-3">
+        {% for o in offers %}
+        {% let open = o.status == "open" %}
+        <li class="card {% if open && o.incoming %}border-l-2 border-l-ink bg-raised {% endif %}{% if !open %}opacity-60 {% endif %}">
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+                <p class="font-semibold">
+                    {% if o.incoming %}From {{ o.other }}{% else %}To {{ o.other }}{% endif %}
+                </p>
+                <p class="text-xs text-muted">{{ o.status|capitalize }}</p>
+            </div>
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="min-w-0">
+                    <p class="label mb-2">You give</p>
+                    {% call mons(o.give) %}{% endcall %}
+                </div>
+                <div class="min-w-0">
+                    <p class="label mb-2">You get</p>
+                    {% call mons(o.get) %}{% endcall %}
+                </div>
+            </div>
+            {% if let Some(why) = o.reason %}
+                <p class="mt-3 text-muted">{{ why }}</p>
+            {% endif %}
+            {% if open %}
+            <div class="mt-4 flex justify-end gap-3">
+                {% if o.incoming %}
+                    <form method="post" action="/trades/{{ o.id }}/close"><button class="btn">Decline</button></form>
+                    <form method="post" action="/trades/{{ o.id }}/accept">
+                        <button class="btn-primary" onclick="return confirm('Accept this trade? It uses one move from each of you and cannot be undone.')">Accept</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="/trades/{{ o.id }}/close"><button class="btn">Withdraw</button></form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
+{% endif %}
+
+<section class="card p-0 mt-10 min-w-0">
+    <h2 class="label px-5 pt-5">Moves this season</h2>
+    {% if log.is_empty() %}
+        <p class="px-5 py-5 text-muted">No trades or free agency moves yet.</p>
+    {% else %}
+    <ul class="mt-3">
+        {% for m in log %}
+        <li class="flex gap-4 px-5 py-3 border-t border-line">
+            <span class="w-14 shrink-0 font-mono text-xs text-faint pt-2">wk {{ "{:02}"|format(m.effective_week) }}</span>
+            <div class="min-w-0 flex-1 grid grid-cols-1 gap-2">
+                {% for part in m.parts %}
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                    <span class="text-muted whitespace-nowrap"><span class="text-ink font-semibold">{{ part.coach }}</span> {{ part.verb }}</span>
+                    {% call mons(part.items) %}{% endcall %}
+                </div>
+                {% endfor %}
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</section>
+{% endblock %}

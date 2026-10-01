@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT r.pokemon_id, p.slug FROM roster_entry r JOIN pokemon p ON p.id = r.pokemon_id\n             WHERE r.coach_id = ? AND r.from_week <= ? AND (r.until_week IS NULL OR r.until_week > ?)",
+  "describe": {
+    "columns": [
+      {
+        "name": "pokemon_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "slug",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "91274c4cef9015e29ca5c1f2f84d00d51ce7d321c7312e515c4831544243404b"
+}

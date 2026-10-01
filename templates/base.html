@@ -24,6 +24,7 @@
                     <a href="/roster/mine" class="nav-link" {% if layout.page == "roster" %}aria-current="page"{% endif %}>Your roster</a>
                 {% endif %}
                 <a href="/pokemon" class="nav-link" {% if layout.page == "pokemon" %}aria-current="page"{% endif %}>Tier list</a>
+                <a href="/trades" class="nav-link" {% if layout.page == "trades" %}aria-current="page"{% endif %}>Trades</a>
                 <a href="/schedule" class="nav-link" {% if layout.page == "schedule" %}aria-current="page"{% endif %}>Schedule</a>
                 <a href="/standings" class="nav-link" {% if layout.page == "standings" %}aria-current="page"{% endif %}>Standings</a>
                 {% if layout.is_admin %}
@@ -51,5 +52,12 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+    {# Every <time datetime> is UTC from the server; show it in the viewer's zone. #}
+    <script>
+        for (const t of document.querySelectorAll('time[datetime]')) {
+            t.textContent = new Date(t.dateTime).toLocaleString(undefined,
+                { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+    </script>
 </body>
 </html>

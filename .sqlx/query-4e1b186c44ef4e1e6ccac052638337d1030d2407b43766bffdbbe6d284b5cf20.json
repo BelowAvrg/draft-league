@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT g.id, g.replay_url FROM game g JOIN match m ON m.id = g.match_id\n             WHERE m.season_id = ? AND g.log IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "replay_url",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "replay_url"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "4e1b186c44ef4e1e6ccac052638337d1030d2407b43766bffdbbe6d284b5cf20"
+}

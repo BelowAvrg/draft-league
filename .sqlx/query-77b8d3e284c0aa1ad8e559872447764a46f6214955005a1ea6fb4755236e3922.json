@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO roster_entry (season_id, coach_id, pokemon_id, from_week, move_id)\n             VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "77b8d3e284c0aa1ad8e559872447764a46f6214955005a1ea6fb4755236e3922"
+}

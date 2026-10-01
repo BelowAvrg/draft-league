@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT o.id, o.from_coach_id, pf.discord_username AS from_name,\n                      o.to_coach_id, pt.discord_username AS to_name,\n                      o.status, o.reason, o.created_at\n               FROM trade_offer o\n               JOIN coach cf ON cf.id = o.from_coach_id JOIN person pf ON pf.id = cf.person_id\n               JOIN coach ct ON ct.id = o.to_coach_id JOIN person pt ON pt.id = ct.person_id\n               WHERE ? IN (o.from_coach_id, o.to_coach_id)\n               ORDER BY o.id DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "from_coach_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "from_coach_id"
+          }
+        }
+      },
+      {
+        "name": "from_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "to_coach_id",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "to_coach_id"
+          }
+        }
+      },
+      {
+        "name": "to_name",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "status",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "reason",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "c7fdb1d96197ca0dbd6aee69df4fe322a0f082d363d5f1b1c60a2be1dfc4420a"
+}

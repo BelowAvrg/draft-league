@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT g.id AS \"id!\", g.log, g.winner_coach_id, m.week,\n                      m.coach_a_id AS \"a!\", m.coach_b_id AS \"b!\"\n               FROM game g JOIN match m ON m.id = g.match_id WHERE m.season_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "log",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "log"
+          }
+        }
+      },
+      {
+        "name": "winner_coach_id",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game",
+            "name": "winner_coach_id"
+          }
+        }
+      },
+      {
+        "name": "week",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "week"
+          }
+        }
+      },
+      {
+        "name": "a!",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_a_id"
+          }
+        }
+      },
+      {
+        "name": "b!",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_b_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "19199cb753f7ed74c4c707ae409ad861cf5394d7343eaa9106e5635979da53b5"
+}

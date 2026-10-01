@@ -108,8 +108,12 @@ async fn auto_picks_cascade_across_coaches() {
     db.set_queue_slot(gary, 1, MONS[1]).await.expect("slot 1");
     db.set_queue_slot(gary, 2, MONS[2]).await.expect("slot 2");
 
-    db.make_pick(ash, MONS[0]).await.expect("ash picks");
+    let drafted = db.make_pick(ash, MONS[0]).await.expect("ash picks");
 
+    // One action, three picks, numbered across the whole draft.
+    let numbers: Vec<i64> = drafted.iter().map(|d| d.number).collect();
+    assert_eq!(numbers, [1, 2, 3], "the manual pick and both auto-picks are returned");
+    assert_eq!(drafted[1].discord_id, "100000000000000001", "auto-picks are gary's");
     assert_eq!(db.roster_of(gary).await.expect("roster").len(), 2, "both slots cascaded");
     assert_eq!(on_the_clock(&db).await, Some(ash), "the cascade stops at ash's empty queue");
 }
@@ -216,4 +220,32 @@ async fn a_slot_that_breaks_the_reserve_stalls_instead_of_picking() {
     assert!(db.roster_of(gary).await.expect("roster").is_empty(), "no auto-pick");
     assert_eq!(on_the_clock(&db).await, Some(gary), "gary is left to decide");
     assert_eq!(db.queue_of(gary).await.expect("queue").len(), 1, "the slot stays put");
+}
+
+#[tokio::test]
+async fn finishing_runs_the_next_coachs_queue() {
+    let (db, coaches) = fixture().await;
+    let (ash, gary) = (coaches[0], coaches[1]);
+    let ids: Vec<i64> = sqlx::query_scalar("SELECT id FROM pokemon ORDER BY id LIMIT 20")
+        .fetch_all(db.pool())
+        .await
+        .expect("ids");
+
+    // Both reach the minimum of 8, by whoever is on the clock.
+    for &id in &ids[..16] {
+        let coach = on_the_clock(&db).await.expect("someone is up");
+        db.make_pick(coach, id).await.expect("pick");
+    }
+    assert_eq!(on_the_clock(&db).await, Some(ash), "round 9 opens with ash");
+
+    // Gary queues pick 9 while ash is still up, so nothing fires yet.
+    let fired = db.set_queue_slot(gary, 9, ids[16]).await.expect("queue");
+    assert!(fired.is_empty(), "gary is not on the clock");
+
+    // Ash stopping puts gary on the clock, and his slot must fire there and then.
+    let (count, drafted) = db.finish_drafting(ash).await.expect("ash is done");
+    assert_eq!(count, 8);
+    assert_eq!(drafted.len(), 1, "gary's queued pick fired off ash finishing");
+    assert_eq!((drafted[0].number, drafted[0].discord_id.as_str()), (17, "100000000000000001"));
+    assert_eq!(db.roster_of(gary).await.expect("roster").len(), 9);
 }

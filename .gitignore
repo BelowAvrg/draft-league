@@ -3,5 +3,6 @@
 /.env
 
 /deploy
+/docs
 /static/app.css
 /node_modules

@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT EXISTS(SELECT 1 FROM roster_entry\n                   WHERE season_id = ? AND pokemon_id = ? AND until_week IS NULL) AS \"e!: bool\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "e!: bool",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "22c606cac6b91bab3bfcb4d44bc6728c2eb1fadb5dffb561ae8e6b569286bd24"
+}

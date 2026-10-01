@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT re.pokemon_id, m.slug, m.display_name, m.types,\n                      ct.points AS \"points!: i64\", pk.pick_number AS \"pick_number?: i64\",\n                      re.from_week, re.until_week\n               FROM roster_entry re\n               JOIN pokemon m ON m.id = re.pokemon_id\n               JOIN cost ct ON ct.season_id = re.season_id AND ct.pokemon_id = re.pokemon_id\n               LEFT JOIN pick pk ON pk.coach_id = re.coach_id AND pk.pokemon_id = re.pokemon_id\n               WHERE re.coach_id = ?\n               ORDER BY pk.pick_number IS NULL, pk.pick_number, re.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "pokemon_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "slug",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "display_name",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      },
+      {
+        "name": "types",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "types"
+          }
+        }
+      },
+      {
+        "name": "points!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      },
+      {
+        "name": "pick_number?: i64",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pick",
+            "name": "pick_number"
+          }
+        }
+      },
+      {
+        "name": "from_week",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "from_week"
+          }
+        }
+      },
+      {
+        "name": "until_week",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "until_week"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "fe32430fb94f5a184738bc092ad2c6a49f3ad651c6de134035104ffbc2903c02"
+}

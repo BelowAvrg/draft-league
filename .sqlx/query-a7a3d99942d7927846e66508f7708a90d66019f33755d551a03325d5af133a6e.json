@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO move (season_id, kind, coach_a_id, coach_b_id, effective_week)\n         VALUES (?, 'trade', ?, ?, ?) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "move",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a7a3d99942d7927846e66508f7708a90d66019f33755d551a03325d5af133a6e"
+}

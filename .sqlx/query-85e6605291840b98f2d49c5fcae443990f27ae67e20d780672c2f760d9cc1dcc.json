@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COALESCE(SUM(ct.points), 0) AS \"s!: i64\"\n               FROM roster_entry re\n               JOIN cost ct ON ct.season_id = re.season_id AND ct.pokemon_id = re.pokemon_id\n               WHERE re.coach_id = ? AND re.until_week IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "s!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "85e6605291840b98f2d49c5fcae443990f27ae67e20d780672c2f760d9cc1dcc"
+}

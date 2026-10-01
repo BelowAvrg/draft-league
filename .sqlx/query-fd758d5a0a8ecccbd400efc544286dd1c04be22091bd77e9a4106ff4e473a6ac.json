@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT display_name FROM pokemon WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "display_name",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "display_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fd758d5a0a8ecccbd400efc544286dd1c04be22091bd77e9a4106ff4e473a6ac"
+}

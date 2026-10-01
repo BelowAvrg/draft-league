@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT points AS \"points!: i64\" FROM cost WHERE season_id = ? AND pokemon_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "points!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d0b5b9211ebfb5617873456e20faadc461c3e26e8c14b6a842f454cae261fc7e"
+}

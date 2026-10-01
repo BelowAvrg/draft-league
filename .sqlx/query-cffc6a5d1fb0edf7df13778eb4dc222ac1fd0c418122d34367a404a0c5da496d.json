@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT url FROM webhook WHERE kind = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "url",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "webhook",
+            "name": "url"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cffc6a5d1fb0edf7df13778eb4dc222ac1fd0c418122d34367a404a0c5da496d"
+}

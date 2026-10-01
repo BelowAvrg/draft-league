@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO webhook (kind, url) VALUES (?, ?)\n             ON CONFLICT (kind) DO UPDATE SET url = excluded.url",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3d0aec815ecb04888ecfcfee251a047cf44b4640f7470101443ca3ad7043f39a"
+}

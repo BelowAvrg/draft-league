@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT MIN(week) AS \"w?: i64\" FROM match\n           WHERE is_playoff = 0 AND winner_coach_id IS NULL AND ? IN (coach_a_id, coach_b_id)",
+  "describe": {
+    "columns": [
+      {
+        "name": "w?: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "23b5f8f6ec477eabaffe571962f6f69bef6879ff155259f9fe52b0c7c9614e18"
+}

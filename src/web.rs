@@ -1,7 +1,7 @@
 //! Router, shared state, and the pages built so far.
 
 use askama::Template;
-use axum::extract::{FromRef, Path, Query, State};
+use axum::extract::{FromRef, Path, Query, RawForm, State};
 use axum::response::{Html, IntoResponse, Redirect, Response};
 use axum::routing::{get, post};
 use axum::{Form, Router};
@@ -11,11 +11,14 @@ use tower_http::services::ServeDir;
 use crate::auth::{AdminUser, CurrentUser, DiscordOauth};
 use crate::coaches::{Coach, CoachError};
 use crate::db::{Db, Person, Season};
+use crate::discord::{self, Kind, Webhooks};
 use crate::draft::{self, Standing};
 use crate::error::AppError;
+use crate::moves::{MAX_MOVES, MoveError, Owned};
 use crate::picks::{Board, DraftError, Listing, Pick};
 use crate::results::{Entry, Game, Match, ResultError, Score};
 use crate::standings::Row;
+use crate::trades::{MoveLine, Moved, OfferItem};
 use crate::tiers::ImportError;
 
 /// Everything a handler can extract from application state.
@@ -23,11 +26,18 @@ use crate::tiers::ImportError;
 pub struct AppState {
     pub db: Db,
     pub oauth: DiscordOauth,
+    pub webhooks: Webhooks,
 }
 
 impl FromRef<AppState> for Db {
     fn from_ref(input: &AppState) -> Self {
         input.db.clone()
+    }
+}
+
+impl FromRef<AppState> for Webhooks {
+    fn from_ref(input: &AppState) -> Self {
+        input.webhooks.clone()
     }
 }
 
@@ -44,6 +54,11 @@ pub fn router(state: AppState) -> Router {
         .route("/board", get(index))
         .route("/roster/mine", get(my_roster))
         .route("/roster/{id}", get(roster))
+        .route("/roster/free-agency", post(free_agency))
+        .route("/trades", get(trades_page))
+        .route("/trades/propose", post(propose_trade))
+        .route("/trades/{id}/accept", post(accept_trade))
+        .route("/trades/{id}/close", post(close_offer))
         .route("/pokemon", get(pokemon))
         .route("/draft", get(draft_page))
         .route("/draft/pick", post(make_pick))
@@ -59,11 +74,16 @@ pub fn router(state: AppState) -> Router {
         .route("/admin/coaches/{id}", post(update_coach))
         .route("/admin/coaches/{id}/remove", post(remove_coach))
         .route("/admin/members/{id}", post(update_member))
+        .route("/admin/stats/reread", post(reread_stats))
+        .route("/admin/webhooks/{kind}", post(save_webhook))
+        .route("/admin/webhooks/{kind}/clear", post(clear_webhook))
         .route("/schedule", get(schedule_page))
         .route("/standings", get(standings_page))
+        .route("/stats", get(stats_page))
         .route("/match/{id}", get(match_page))
         .route("/match/{id}/result", post(save_result))
         .route("/match/{id}/replay", post(upload_replay))
+        .route("/match/{id}/schedule", post(save_schedule))
         .route("/match/{id}/game/{game_id}/remove", post(remove_game))
         .route("/profile", get(profile).post(save_profile))
         .route("/health", get(health))
@@ -235,7 +255,10 @@ impl Layout {
 struct RosterTemplate {
     layout: Layout,
     coach: Coach,
-    picks: Vec<Pick>,
+    /// What plays this week plus pending arrivals and departures.
+    roster: Vec<Owned>,
+    /// Roster size once pending moves land.
+    size: i64,
     min_roster: i64,
     max_roster: i64,
     status: &'static str,
@@ -244,6 +267,29 @@ struct RosterTemplate {
     reserve: i64,
     /// Empty slots still needed to reach the minimum.
     open_required: i64,
+    /// Moves made so far; absent while the draft runs.
+    moves_used: Option<i64>,
+    max_moves: i64,
+    /// Present when the viewer can offer this coach a trade.
+    trade: Option<TradeSetup>,
+    /// Replay stats for this coach's Pokémon, from their games with this coach.
+    stats: Vec<crate::stats::MonStats>,
+}
+
+impl RosterTemplate {
+    /// One Pokémon's replay stats with this coach, once it has any.
+    fn stats_of(&self, pokemon_id: i64) -> Option<&crate::stats::MonStats> {
+        self.stats.iter().find(|x| x.pokemon_id == pokemon_id)
+    }
+}
+
+/// The viewer's side of a trade offer, for the propose dialog's totals.
+struct TradeSetup {
+    me: Coach,
+    /// The viewer's roster size once their pending moves land.
+    my_size: i64,
+    /// What the viewer can offer: owned and already arrived.
+    mine: Vec<Owned>,
 }
 
 /// One coach's roster. Public: completed picks are visible to everyone.
@@ -260,34 +306,263 @@ async fn roster(
     user: Option<CurrentUser>,
     State(db): State<Db>,
     Path(id): Path<i64>,
+    Query(flash): Query<Flash>,
 ) -> Result<impl IntoResponse, AppError> {
     let board = db.board().await.map_err(draft_error)?;
     let coaches = db.coaches(board.season.id).await?;
     let coach = coaches.into_iter().find(|c| c.id == id).ok_or(AppError::NotFound)?;
     let seat = board.seat_of(id);
     let status = seat.map_or(Standing::Active, |s| board.standing(s)).label();
-    let picks = db.roster_of(id).await?;
-    let drafted = i64::try_from(picks.len()).expect("a roster holds at most max_roster picks");
+    let roster = db.roster(id).await?;
+    let size = i64::try_from(roster.iter().filter(|o| o.leaves.is_none()).count())
+        .expect("a roster holds at most max_roster Pokémon");
     let (min, max) = (board.roster.min(), board.roster.max());
+    let mine = user.as_ref().is_some_and(|CurrentUser(p)| p.id == coach.person_id);
+
+    let draft_over = !board.seats.is_empty() && board.turn.coach_id.is_none();
+    let moves_used = if draft_over { Some(db.moves_used(id).await?) } else { None };
+    // Likewise a convenience; /trades/propose and the accept re-check it all.
+    let viewer = match &user {
+        Some(CurrentUser(p)) if draft_over && !mine => db.coach_of(p.id, board.season.id).await?,
+        _ => None,
+    };
+    let trade = match viewer {
+        Some(me_id) if db.moves_used(me_id).await? < MAX_MOVES => {
+            let mine: Vec<Owned> = db.roster(me_id).await?;
+            let my_size = i64::try_from(mine.iter().filter(|o| o.leaves.is_none()).count())
+                .expect("a roster holds at most max_roster Pokémon");
+            db.coaches(board.season.id).await?.into_iter().find(|c| c.id == me_id).map(|me| TradeSetup {
+                me,
+                my_size,
+                mine: mine.into_iter().filter(|o| o.joins.is_none() && o.leaves.is_none()).collect(),
+            })
+        }
+        _ => None,
+    };
+    // ponytail: reads the whole season's stats to show one coach's; fine at league size.
+    let mon_stats = db.mon_stats(board.season.id).await?.into_iter().filter(|x| x.coach_id == id).collect();
     Ok(Html(
         RosterTemplate {
             // Your own roster lights up the nav's "Your roster" link.
-            layout: Layout::new(
-                user.as_ref(),
-                if user.as_ref().is_some_and(|CurrentUser(p)| p.id == coach.person_id) { "roster" } else { "" },
-                Flash::default(),
-            ),
+            layout: Layout::new(user.as_ref(), if mine { "roster" } else { "" }, flash),
             reserve: seat.map_or(0, |s| draft::reserve(s.picks, board.roster, &board.pool)),
             on_clock: board.turn.coach_id == Some(id),
-            open_required: (min - drafted).max(0),
+            open_required: (min - size).max(0),
             min_roster: min,
             max_roster: max,
             coach,
-            picks,
+            roster,
+            size,
             status,
+            moves_used,
+            max_moves: MAX_MOVES,
+            trade,
+            stats: mon_stats,
         }
         .render()?,
     ))
+}
+
+#[derive(Debug, Deserialize)]
+struct FreeAgencyForm {
+    drop: i64,
+    /// The pickup; named to match the shared picker row.
+    pokemon_id: i64,
+}
+
+/// Drops one of the signed-in coach's Pokémon for an unowned one.
+///
+/// Keyed to the requester's own coach row, so no one can move for another.
+async fn free_agency(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    State(hooks): State<Webhooks>,
+    Form(form): Form<FreeAgencyForm>,
+) -> Result<Redirect, AppError> {
+    let season = db.active_season().await?.ok_or(AppError::NotFound)?;
+    let coach_id = db.coach_of(person.id, season.id).await?.ok_or(AppError::Forbidden)?;
+    let (key, msg) = match db.free_agency(coach_id, form.drop, form.pokemon_id).await {
+        Ok(week) => {
+            hooks.free_agency(coach_id, form.drop, form.pokemon_id, week).await;
+            ("ok", "Done. The swap plays from your next week.".to_owned())
+        }
+        Err(MoveError::Sqlx(e) | MoveError::Draft(DraftError::Sqlx(e))) => return Err(e.into()),
+        Err(e) => ("err", e.to_string()),
+    };
+    Ok(Redirect::to(&format!("/roster/{coach_id}?{key}={}", urlencode(&msg))))
+}
+
+/// One offer from the viewer's side: what they give and what they get.
+struct OfferView {
+    id: i64,
+    /// Made to the viewer, rather than by them.
+    incoming: bool,
+    /// The other coach's name.
+    other: String,
+    status: String,
+    reason: Option<String>,
+    give: Vec<OfferItem>,
+    get: Vec<OfferItem>,
+}
+
+/// One coach's share of a logged move.
+struct LogPart {
+    coach: String,
+    /// "gets", "picks up", or "drops".
+    verb: &'static str,
+    items: Vec<Moved>,
+}
+
+/// One logged move, grouped by coach for display.
+struct LogView {
+    effective_week: i64,
+    parts: Vec<LogPart>,
+}
+
+impl LogView {
+    fn new(line: MoveLine) -> Self {
+        let mut parts: Vec<LogPart> = Vec::new();
+        for item in line.items {
+            let verb = match (line.kind.as_str(), item.dropped) {
+                (_, true) => "drops",
+                ("free_agency", false) => "picks up",
+                _ => "gets",
+            };
+            match parts.iter_mut().find(|p| p.coach == item.coach && p.verb == verb) {
+                Some(part) => part.items.push(item),
+                None => parts.push(LogPart { coach: item.coach.clone(), verb, items: vec![item] }),
+            }
+        }
+        Self { effective_week: line.effective_week, parts }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "trades.html")]
+struct TradesTemplate {
+    layout: Layout,
+    /// The viewer's own offers; empty for anyone not coaching.
+    offers: Vec<OfferView>,
+    /// Moves the viewer has used; absent unless they coach this season.
+    moves_used: Option<i64>,
+    max_moves: i64,
+    log: Vec<LogView>,
+}
+
+/// Trades: the viewer's own offers, then the season's public move log.
+///
+/// Offers are read only for the signed-in coach's own `coach_id`.
+async fn trades_page(
+    user: Option<CurrentUser>,
+    State(db): State<Db>,
+    Query(flash): Query<Flash>,
+) -> Result<impl IntoResponse, AppError> {
+    let season = db.active_season().await?.ok_or(AppError::NotFound)?;
+    let me = match &user {
+        Some(CurrentUser(p)) => db.coach_of(p.id, season.id).await?,
+        None => None,
+    };
+    let mut offers = Vec::new();
+    let mut moves_used = None;
+    if let Some(me) = me {
+        moves_used = Some(db.moves_used(me).await?);
+        for o in db.offers_of(me).await? {
+            let incoming = o.to_coach_id == me;
+            let other_id = if incoming { o.from_coach_id } else { o.to_coach_id };
+            offers.push(OfferView {
+                id: o.id,
+                incoming,
+                other: if incoming { o.from_name.clone() } else { o.to_name.clone() },
+                give: o.given_by(me).into_iter().cloned().collect(),
+                get: o.given_by(other_id).into_iter().cloned().collect(),
+                status: o.status,
+                reason: o.reason,
+            });
+        }
+    }
+    let log = db.move_log(season.id).await?.into_iter().map(LogView::new).collect();
+    Ok(Html(
+        TradesTemplate {
+            layout: Layout::new(user.as_ref(), "trades", flash),
+            offers,
+            moves_used,
+            max_moves: MAX_MOVES,
+            log,
+        }
+        .render()?,
+    ))
+}
+
+/// The signed-in person's coach row this season, or 403.
+async fn my_coach(db: &Db, person: &Person) -> Result<i64, AppError> {
+    let season = db.active_season().await?.ok_or(AppError::NotFound)?;
+    db.coach_of(person.id, season.id).await?.ok_or(AppError::Forbidden)
+}
+
+/// Offers a trade from the signed-in coach.
+///
+/// The body repeats `give` and `get`, which `Form` cannot collect, so it is
+/// split by hand. Every field is an integer id, so nothing needs decoding;
+/// anything else is ignored.
+async fn propose_trade(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    State(hooks): State<Webhooks>,
+    RawForm(body): RawForm,
+) -> Result<Redirect, AppError> {
+    let (mut to, mut give, mut get) = (None, Vec::new(), Vec::new());
+    for pair in String::from_utf8_lossy(&body).split('&') {
+        let Some((key, value)) = pair.split_once('=') else { continue };
+        let Ok(id) = value.parse::<i64>() else { continue };
+        match key {
+            "to" => to = Some(id),
+            "give" => give.push(id),
+            "get" => get.push(id),
+            _ => {}
+        }
+    }
+    let to = to.ok_or(AppError::NotFound)?;
+    let from = my_coach(&db, &person).await?;
+    let outcome = db.propose_trade(from, to, &give, &get).await;
+    if outcome.is_ok() {
+        hooks.trade_offered(from, to).await;
+    }
+    back_to_trades(outcome.map(|()| "Offer sent."))
+}
+
+/// Accepts an offer made to the signed-in coach.
+async fn accept_trade(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    State(hooks): State<Webhooks>,
+    Path(id): Path<i64>,
+) -> Result<Redirect, AppError> {
+    let me = my_coach(&db, &person).await?;
+    let outcome = db.accept_trade(id, me).await;
+    if let Ok(week) = outcome {
+        hooks.trade_made(id, me, week).await;
+    }
+    back_to_trades(outcome.map(|_| "Trade made. It plays from next week."))
+}
+
+/// Declines an offer to the signed-in coach, or withdraws one they made.
+async fn close_offer(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    Path(id): Path<i64>,
+) -> Result<Redirect, AppError> {
+    let me = my_coach(&db, &person).await?;
+    back_to_trades(db.close_offer(id, me).await.map(|()| "Offer closed."))
+}
+
+/// Back to the trades page carrying a one-line outcome.
+fn back_to_trades(result: Result<&str, MoveError>) -> Result<Redirect, AppError> {
+    let (key, msg) = match result {
+        Ok(msg) => ("ok", msg.to_owned()),
+        Err(MoveError::Sqlx(e) | MoveError::Draft(DraftError::Sqlx(e))) => return Err(e.into()),
+        Err(e) => ("err", e.to_string()),
+    };
+    Ok(Redirect::to(&format!("/trades?{key}={}", urlencode(&msg))))
 }
 
 #[derive(Template)]
@@ -296,6 +571,12 @@ struct PokemonTemplate {
     layout: Layout,
     listings: Vec<Listing>,
     taken: usize,
+    /// The viewer's roster to drop from; filled only when they can make a move.
+    droppable: Vec<Owned>,
+    /// The viewer's coach id, so their own Pokémon get no trade button.
+    me: Option<i64>,
+    /// The viewer's moves left, when `droppable` is filled.
+    moves_left: i64,
 }
 
 /// The tier list, showing what is already drafted. Public.
@@ -303,15 +584,34 @@ async fn pokemon(
     user: Option<CurrentUser>,
     State(db): State<Db>,
 ) -> Result<impl IntoResponse, AppError> {
-    let listings = match db.active_season().await? {
+    let season = db.active_season().await?;
+    let listings = match &season {
         Some(season) => db.listings(season.id).await?,
         None => Vec::new(),
     };
     let taken = listings.iter().filter(|l| l.taken_by.is_some()).count();
+    // The form is a convenience; /roster/free-agency re-checks every rule.
+    let (mut droppable, mut moves_left, mut me) = (Vec::new(), 0, None);
+    if let (Some(season), Some(CurrentUser(p))) = (&season, &user)
+        && let Some(coach_id) = db.coach_of(p.id, season.id).await?
+    {
+        me = Some(coach_id);
+        let board = db.board().await.map_err(draft_error)?;
+        let draft_over = !board.seats.is_empty() && board.turn.coach_id.is_none();
+        moves_left = MAX_MOVES - db.moves_used(coach_id).await?;
+        if draft_over && moves_left > 0 {
+            droppable = db.roster(coach_id).await?.into_iter()
+                .filter(|o| o.joins.is_none() && o.leaves.is_none())
+                .collect();
+        }
+    }
     Ok(Html(PokemonTemplate {
         layout: Layout::new(user.as_ref(), "pokemon", Flash::default()),
         listings,
         taken,
+        droppable,
+        me,
+        moves_left,
     }.render()?))
 }
 
@@ -346,6 +646,7 @@ struct PickForm {
 async fn make_pick(
     CurrentUser(person): CurrentUser,
     State(db): State<Db>,
+    State(hooks): State<Webhooks>,
     Form(form): Form<PickForm>,
 ) -> Result<impl IntoResponse, AppError> {
     let outcome = async {
@@ -355,13 +656,17 @@ async fn make_pick(
         db.make_pick(coach_id, form.pokemon_id).await
     }
     .await;
-    back_to_board(outcome.map(|()| "Pick recorded."))
+    if let Ok(picks) = &outcome {
+        hooks.draft(None, picks).await;
+    }
+    back_to_board(outcome.map(|_| "Pick recorded."))
 }
 
 /// Marks the signed-in coach as finished drafting.
 async fn finish_drafting(
     CurrentUser(person): CurrentUser,
     State(db): State<Db>,
+    State(hooks): State<Webhooks>,
 ) -> Result<impl IntoResponse, AppError> {
     let outcome = async {
         let season = db.active_season().await?.ok_or(DraftError::NoSeason)?;
@@ -370,7 +675,12 @@ async fn finish_drafting(
         db.finish_drafting(coach_id).await
     }
     .await;
-    back_to_board(outcome.map(|()| "You have finished drafting."))
+    if let Ok((count, picks)) = &outcome {
+        let id = &person.discord_id;
+        let lead = format!("<@{id}> is done drafting with {count} Pokémon.");
+        hooks.draft(Some((lead, id.clone())), picks).await;
+    }
+    back_to_board(outcome.map(|_| "You have finished drafting."))
 }
 
 /// One row of the queue editor: a pick number and whatever is queued for it.
@@ -498,6 +808,7 @@ struct QueueForm {
 async fn set_queue(
     CurrentUser(person): CurrentUser,
     State(db): State<Db>,
+    State(hooks): State<Webhooks>,
     Form(form): Form<QueueForm>,
 ) -> Result<impl IntoResponse, AppError> {
     let outcome = async {
@@ -506,7 +817,13 @@ async fn set_queue(
         db.set_queue_slot(coach_id, form.slot_number, form.pokemon_id).await
     }
     .await;
-    back_to_draft(outcome.map(|()| "Queued."))
+    // Only a slot for the pick on the clock fires; anything else is not news.
+    if let Ok(picks) = &outcome
+        && !picks.is_empty()
+    {
+        hooks.draft(None, picks).await;
+    }
+    back_to_draft(outcome.map(|_| "Queued."))
 }
 
 /// Empties one of the signed-in coach's queue slots.
@@ -539,9 +856,18 @@ fn back_to_draft(result: Result<&str, DraftError>) -> Result<Redirect, AppError>
 async fn reopen_coach(
     _admin: AdminUser,
     State(db): State<Db>,
+    State(hooks): State<Webhooks>,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    db.reopen_drafting(id).await?;
+    let picks = match db.reopen_drafting(id).await {
+        Ok(picks) => picks,
+        Err(DraftError::Sqlx(e)) => return Err(e.into()),
+        Err(e) => return Ok(Redirect::to(&format!("/admin?err={}", urlencode(&e.to_string())))),
+    };
+    if let Some(discord_id) = db.coach_discord_id(id).await? {
+        let lead = format!("An admin reopened <@{discord_id}> for drafting.");
+        hooks.draft(Some((lead, discord_id)), &picks).await;
+    }
     back_to_admin(Ok("Coach reopened for drafting."))
 }
 
@@ -555,14 +881,73 @@ struct UndoForm {
 async fn undo_pick(
     AdminUser(admin): AdminUser,
     State(db): State<Db>,
+    State(hooks): State<Webhooks>,
     Form(form): Form<UndoForm>,
 ) -> Result<impl IntoResponse, AppError> {
     let (key, msg) = match db.undo_pick(form.coach_id, form.pick_number, admin.id).await {
-        Ok(()) => ("ok", "Pick undone.".to_owned()),
+        Ok((undone, picks)) => {
+            let lead = format!(
+                "An admin undid #{:03} (<@{}>, {}).",
+                undone.number, undone.discord_id, undone.pokemon
+            );
+            hooks.draft(Some((lead, undone.discord_id)), &picks).await;
+            ("ok", "Pick undone.".to_owned())
+        }
         Err(DraftError::Sqlx(e)) => return Err(e.into()),
         Err(e) => ("err", e.to_string()),
     };
     Ok(Redirect::to(&format!("/admin?{key}={}", urlencode(&msg))))
+}
+
+/// Re-reads every stored replay log in the active season. Admin correction.
+async fn reread_stats(_admin: AdminUser, State(db): State<Db>) -> Result<impl IntoResponse, AppError> {
+    let Some(season) = db.active_season().await? else {
+        return Ok(Redirect::to("/admin"));
+    };
+    let r = db.reread_stats(season.id).await?;
+    let msg = match r.missing {
+        0 => format!("Re-read {} games.", r.read),
+        n => format!("Re-read {} games. {n} have no replay log, so no stats.", r.read),
+    };
+    back_to_admin(Ok(&msg))
+}
+
+#[derive(Debug, Deserialize)]
+struct WebhookForm {
+    url: String,
+}
+
+/// Sets the webhook URL for one event kind. An empty field leaves it alone.
+async fn save_webhook(
+    _admin: AdminUser,
+    State(db): State<Db>,
+    Path(kind): Path<String>,
+    Form(form): Form<WebhookForm>,
+) -> Result<impl IntoResponse, AppError> {
+    let kind = Kind::from_name(&kind).ok_or(AppError::NotFound)?;
+    let url = form.url.trim();
+    if url.is_empty() {
+        return back_to_admin(Ok("Webhook unchanged."));
+    }
+    if !discord::valid_url(url) {
+        return Ok(Redirect::to(&format!(
+            "/admin?err={}",
+            urlencode("That isn't a Discord webhook URL (https://discord.com/api/webhooks/…).")
+        )));
+    }
+    db.set_webhook(kind, url).await?;
+    back_to_admin(Ok("Webhook saved."))
+}
+
+/// Removes the webhook URL for one event kind.
+async fn clear_webhook(
+    _admin: AdminUser,
+    State(db): State<Db>,
+    Path(kind): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let kind = Kind::from_name(&kind).ok_or(AppError::NotFound)?;
+    db.clear_webhook(kind).await?;
+    back_to_admin(Ok("Webhook cleared."))
 }
 
 #[derive(Template)]
@@ -575,6 +960,8 @@ struct AdminTemplate {
     last_pick: Option<Pick>,
     candidates: Vec<Person>,
     row_errors: Vec<String>,
+    /// Each event kind and whether its webhook URL is set. Never the URL.
+    webhooks: Vec<(Kind, bool)>,
 }
 
 impl AdminTemplate {
@@ -587,11 +974,14 @@ impl AdminTemplate {
             last_pick: None,
             candidates: Vec::new(),
             row_errors: Vec::new(),
+            webhooks: Vec::new(),
         }
     }
 
     /// Loads the coach roster for whichever season the page is showing.
     async fn with_roster(mut self, db: &Db) -> Result<Self, AppError> {
+        let set = db.webhooks_set().await?;
+        self.webhooks = Kind::ALL.into_iter().map(|k| (k, set.contains(&k))).collect();
         if let Some(season) = &self.season {
             self.coaches = db.coaches(season.id).await?;
             self.candidates = db.people_without_coach(season.id).await?;
@@ -922,15 +1312,47 @@ async fn standings_page(
 }
 
 #[derive(Template)]
+#[template(path = "stats.html")]
+struct StatsTemplate {
+    layout: Layout,
+    season: Option<Season>,
+    mons: Vec<crate::stats::MonStats>,
+    coaches: Vec<crate::stats::CoachStats>,
+}
+
+/// Season stats from replays: every Pokémon, then every coach. Public.
+async fn stats_page(user: Option<CurrentUser>, State(db): State<Db>) -> Result<impl IntoResponse, AppError> {
+    let layout = Layout::new(user.as_ref(), "stats", Flash::default());
+    let mut page = StatsTemplate { layout, season: None, mons: Vec::new(), coaches: Vec::new() };
+    if let Some(season) = db.active_season().await? {
+        page.mons = db.mon_stats(season.id).await?;
+        page.coaches = db.coach_stats(season.id).await?;
+        page.season = Some(season);
+    }
+    Ok(Html(page.render()?))
+}
+
+#[derive(Template)]
 #[template(path = "match.html")]
 struct MatchTemplate {
     layout: Layout,
     m: Match,
     games: Vec<Game>,
+    /// Both sides' Pokémon in every game, from the replay logs.
+    mons: Vec<crate::stats::MonLine>,
     /// Whether the viewer may enter a result. Decoration only; the write re-checks.
     can_edit: bool,
+    /// Whether the viewer may set the match time. Decoration only; the write re-checks.
+    can_schedule: bool,
     min_differential: i64,
     max_differential: i64,
+}
+
+impl MatchTemplate {
+    /// One coach's Pokémon in one game.
+    fn mons_of(&self, game_id: i64, coach: Option<i64>) -> Vec<&crate::stats::MonLine> {
+        self.mons.iter().filter(|x| x.game_id == game_id && Some(x.coach_id) == coach).collect()
+    }
 }
 
 /// One match: its games, its result, and the forms to change them.
@@ -942,14 +1364,18 @@ async fn match_page(
 ) -> Result<impl IntoResponse, AppError> {
     let m = db.match_by_id(id).await?.ok_or(AppError::NotFound)?;
     let layout = Layout::new(user.as_ref(), "schedule", flash);
-    let can_edit = match user {
-        Some(CurrentUser(p)) => p.is_admin || db.coach_of(p.id, m.season_id).await?.is_some(),
-        None => false,
+    let (is_admin, me) = match user {
+        Some(CurrentUser(p)) => (p.is_admin, db.coach_of(p.id, m.season_id).await?),
+        None => (false, None),
     };
+    let can_edit = is_admin || me.is_some();
+    let can_schedule = is_admin || m.involves(me);
     let range = crate::results::differential_range(m.best_of);
     let page = MatchTemplate {
         games: db.games(id).await?,
+        mons: db.match_mons(id).await?,
         can_edit,
+        can_schedule,
         min_differential: *range.start(),
         max_differential: *range.end(),
         m,
@@ -1007,6 +1433,7 @@ struct ReplayForm {
 async fn upload_replay(
     CurrentUser(person): CurrentUser,
     State(db): State<Db>,
+    State(hooks): State<Webhooks>,
     Path(id): Path<i64>,
     Form(form): Form<ReplayForm>,
 ) -> Result<impl IntoResponse, AppError> {
@@ -1016,7 +1443,42 @@ async fn upload_replay(
             ("err", e.to_string())
         }
         Ok(replay) => match db.add_game(id, &person, &replay).await {
-            Ok(()) => ("ok", "Replay added.".to_owned()),
+            Ok(added) => {
+                hooks.replay(&added).await;
+                ("ok", "Replay added.".to_owned())
+            }
+            Err(ResultError::NoMatch) => return Err(AppError::NotFound),
+            Err(ResultError::NotACoach) => return Err(AppError::Forbidden),
+            Err(ResultError::Sqlx(e)) => return Err(e.into()),
+            Err(e) => ("err", e.to_string()),
+        },
+    };
+    Ok(Redirect::to(&format!("/match/{id}?{key}={}", urlencode(&msg))))
+}
+
+#[derive(Debug, Deserialize)]
+struct ScheduleForm {
+    /// RFC 3339, converted to UTC by the browser; absent clears the time.
+    at: Option<String>,
+}
+
+/// Sets, changes, or clears when a match is to be played.
+async fn save_schedule(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    State(hooks): State<Webhooks>,
+    Path(id): Path<i64>,
+    Form(form): Form<ScheduleForm>,
+) -> Result<impl IntoResponse, AppError> {
+    use time::format_description::well_known::Rfc3339;
+    let at = form.at.as_deref().map(|s| time::OffsetDateTime::parse(s.trim(), &Rfc3339)).transpose();
+    let (key, msg) = match at {
+        Err(_) => ("err", "Pick a date and time.".to_owned()),
+        Ok(at) => match db.set_schedule(id, &person, at).await {
+            Ok(s) => {
+                hooks.schedule(&s).await;
+                ("ok", if s.at.is_some() { "Match time saved." } else { "Match time cleared." }.to_owned())
+            }
             Err(ResultError::NoMatch) => return Err(AppError::NotFound),
             Err(ResultError::NotACoach) => return Err(AppError::Forbidden),
             Err(ResultError::Sqlx(e)) => return Err(e.into()),

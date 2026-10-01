@@ -1,0 +1,150 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT gm.game_id, gm.coach_id, p.slug AS \"slug?\", COALESCE(p.display_name, gm.species) AS \"name!: String\",\n                      gm.played AS \"played: bool\", gm.led AS \"led: bool\", gm.mega AS \"mega: bool\",\n                      gm.fainted AS \"fainted: bool\", gm.direct_kos, gm.passive_kos,\n                      (SELECT COALESCE(group_concat(name, ', '), '') FROM (SELECT name FROM game_mon_reveal\n                        WHERE game_mon_id = gm.id AND kind = 'move' ORDER BY name)) AS \"moves!: String\",\n                      (SELECT COALESCE(group_concat(name, ', '), '') FROM (SELECT name FROM game_mon_reveal\n                        WHERE game_mon_id = gm.id AND kind = 'item' ORDER BY name)) AS \"items!: String\",\n                      (SELECT COALESCE(group_concat(name, ', '), '') FROM (SELECT name FROM game_mon_reveal\n                        WHERE game_mon_id = gm.id AND kind = 'ability' ORDER BY name)) AS \"abilities!: String\"\n               FROM game_mon gm JOIN game g ON g.id = gm.game_id LEFT JOIN pokemon p ON p.id = gm.pokemon_id\n               WHERE g.match_id = ?\n               ORDER BY gm.game_id, gm.played DESC, gm.led DESC, gm.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "game_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "game_id"
+          }
+        }
+      },
+      {
+        "name": "coach_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "coach_id"
+          }
+        }
+      },
+      {
+        "name": "slug?",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pokemon",
+            "name": "slug"
+          }
+        }
+      },
+      {
+        "name": "name!: String",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "played: bool",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "played"
+          }
+        }
+      },
+      {
+        "name": "led: bool",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "led"
+          }
+        }
+      },
+      {
+        "name": "mega: bool",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "mega"
+          }
+        }
+      },
+      {
+        "name": "fainted: bool",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "fainted"
+          }
+        }
+      },
+      {
+        "name": "direct_kos",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "direct_kos"
+          }
+        }
+      },
+      {
+        "name": "passive_kos",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "passive_kos"
+          }
+        }
+      },
+      {
+        "name": "moves!: String",
+        "ordinal": 10,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "items!: String",
+        "ordinal": 11,
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "name": "abilities!: String",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5833afec68a8e9e4d1e5300c3b042a7e943ad6abb0ecfeb553bd0f1efb54832a"
+}

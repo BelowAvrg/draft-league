@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ti.pokemon_id, ti.from_coach_id, ct.points AS \"points!: i64\",\n                  re.id AS \"entry_id?: i64\", re.from_week AS \"from_week?: i64\"\n           FROM trade_offer_item ti\n           JOIN cost ct ON ct.season_id = ? AND ct.pokemon_id = ti.pokemon_id\n           LEFT JOIN roster_entry re ON re.pokemon_id = ti.pokemon_id\n                AND re.coach_id = ti.from_coach_id AND re.until_week IS NULL\n           WHERE ti.offer_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "pokemon_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer_item",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "from_coach_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer_item",
+            "name": "from_coach_id"
+          }
+        }
+      },
+      {
+        "name": "points!: i64",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "cost",
+            "name": "points"
+          }
+        }
+      },
+      {
+        "name": "entry_id?: i64",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "from_week?: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "from_week"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "b9cc81d231e04faffc17461017248bc6df166ecbe38e14e2958b43b4af093a86"
+}

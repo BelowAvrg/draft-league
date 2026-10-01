@@ -1,0 +1,69 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT gm.coach_id, gm.pokemon_id AS \"pokemon_id!\", r.kind, r.name, COUNT(*) AS \"games!: i64\"\n               FROM game_mon_reveal r JOIN game_mon gm ON gm.id = r.game_mon_id\n               JOIN coach co ON co.id = gm.coach_id\n               WHERE co.season_id = ? AND gm.pokemon_id IS NOT NULL\n               GROUP BY gm.coach_id, gm.pokemon_id, r.kind, r.name\n               ORDER BY COUNT(*) DESC, r.name",
+  "describe": {
+    "columns": [
+      {
+        "name": "coach_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "coach_id"
+          }
+        }
+      },
+      {
+        "name": "pokemon_id!",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "pokemon_id"
+          }
+        }
+      },
+      {
+        "name": "kind",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_mon_reveal",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "game_mon_reveal",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "games!: i64",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8e42710ddc2c140fef7f59f370cfc4279bb81dd1c7bb673d657810f663912086"
+}

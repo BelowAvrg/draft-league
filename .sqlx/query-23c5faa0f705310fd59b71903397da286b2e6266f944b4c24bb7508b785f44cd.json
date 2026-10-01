@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM game_mon WHERE game_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "23c5faa0f705310fd59b71903397da286b2e6266f944b4c24bb7508b785f44cd"
+}

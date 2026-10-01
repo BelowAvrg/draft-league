@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT season_id, from_coach_id AS \"from\", to_coach_id AS \"to\" FROM trade_offer\n               WHERE id = ? AND to_coach_id = ? AND status = 'open'",
+  "describe": {
+    "columns": [
+      {
+        "name": "season_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "season_id"
+          }
+        }
+      },
+      {
+        "name": "from",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "from_coach_id"
+          }
+        }
+      },
+      {
+        "name": "to",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "trade_offer",
+            "name": "to_coach_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8d5fd6e45457b8bf4dc1fd2ddc23d80304bcdc4db4a4b5eb5889f59be12693a5"
+}

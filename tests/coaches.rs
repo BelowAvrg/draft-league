@@ -21,6 +21,11 @@ async fn budget_cannot_drop_below_what_is_spent() {
     let coach = db.coaches(season).await.expect("list")[0].id;
 
     // pokemon 3 (venusaur) comes from the seed migration; ids are dex numbers.
+    // Spent is the roster's tier-list cost, so it needs a price.
+    sqlx::query("INSERT INTO cost (season_id, pokemon_id, points) VALUES (1, 3, 40)")
+        .execute(db.pool())
+        .await
+        .expect("cost");
     sqlx::query(
         "INSERT INTO pick (coach_id, season_id, pokemon_id, pick_number, points_paid)
          VALUES (?, 1, 3, 1, 40)",

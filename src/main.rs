@@ -3,6 +3,7 @@
 use anyhow::Context as _;
 use pokemon_draft_site::auth::DiscordOauth;
 use pokemon_draft_site::db::Db;
+use pokemon_draft_site::discord::Webhooks;
 use pokemon_draft_site::web::{router, AppState};
 use tokio::net::TcpListener;
 use tower_sessions::cookie::{Key, SameSite};
@@ -58,13 +59,16 @@ async fn main() -> anyhow::Result<()> {
         .with_same_site(SameSite::Lax)
         .with_expiry(Expiry::OnInactivity(time::Duration::days(SESSION_DAYS)));
 
+    // Already the site's public URL, so posts link back through its origin.
+    let redirect_uri = env("DISCORD_REDIRECT_URI")?;
+    let webhooks = Webhooks::new(db.clone(), &redirect_uri);
     let oauth = DiscordOauth::new(
         env("DISCORD_CLIENT_ID")?,
         env("DISCORD_CLIENT_SECRET")?,
-        env("DISCORD_REDIRECT_URI")?,
+        redirect_uri,
     );
 
-    let app = router(AppState { db, oauth }).layer(sessions);
+    let app = router(AppState { db, oauth, webhooks }).layer(sessions);
 
     let addr = std::env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3000".into());
     let listener = TcpListener::bind(&addr).await.with_context(|| format!("binding {addr}"))?;

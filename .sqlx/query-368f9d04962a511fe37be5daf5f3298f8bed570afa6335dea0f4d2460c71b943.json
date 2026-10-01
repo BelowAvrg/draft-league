@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE trade_offer\n             SET status = CASE WHEN to_coach_id = ? THEN 'declined' ELSE 'withdrawn' END,\n                 decided_at = datetime('now')\n             WHERE id = ? AND status = 'open' AND ? IN (from_coach_id, to_coach_id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "368f9d04962a511fe37be5daf5f3298f8bed570afa6335dea0f4d2460c71b943"
+}

@@ -218,6 +218,44 @@
             <button type="submit" class="btn">Import schedule</button>
         </div>
     </form>
+
+    <form method="post" action="/admin/stats/reread" class="card">
+        <h2 class="label">Replay stats</h2>
+        <p class="mt-3 text-muted">
+            Re-reads every replay attached this season and rewrites its stats. Results are not touched.
+            Replays from before logs were kept are fetched from Showdown once.
+        </p>
+        <div class="mt-4 flex justify-end">
+            <button type="submit" class="btn">Re-read replays</button>
+        </div>
+    </form>
+
+    <section class="card">
+        <h2 class="label">Discord webhooks</h2>
+        <p class="mt-3 text-muted">
+            One channel webhook per event kind; kinds can share a URL. A URL is never shown again once saved.
+            Leave a field empty to keep what is set.
+        </p>
+        <div class="mt-4 space-y-3">
+        {% for (kind, set) in webhooks %}
+            <div class="flex flex-wrap items-center gap-2">
+                <form method="post" action="/admin/webhooks/{{ kind }}" class="flex flex-1 items-center gap-2 min-w-0">
+                    <label for="webhook-{{ kind }}" class="w-20 font-medium capitalize">{{ kind }}</label>
+                    <input id="webhook-{{ kind }}" name="url" type="url" autocomplete="off"
+                        placeholder="{% if *set %}Set — paste to replace{% else %}Not set{% endif %}"
+                        class="input h-8 flex-1 min-w-0 px-2 font-mono text-xs">
+                    <button type="submit" class="btn btn-sm">Save</button>
+                </form>
+                {% if *set %}
+                <form method="post" action="/admin/webhooks/{{ kind }}/clear">
+                    <button type="submit" class="btn-danger btn-sm"
+                        onclick="return confirm('Stop posting {{ kind }} events to Discord?')">Clear</button>
+                </form>
+                {% endif %}
+            </div>
+        {% endfor %}
+        </div>
+    </section>
 </div>
 {% when None %}
 <div class="py-24 flex flex-col items-center gap-4 text-faint">

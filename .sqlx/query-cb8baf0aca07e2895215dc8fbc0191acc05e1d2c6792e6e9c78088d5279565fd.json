@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.discord_id FROM coach c JOIN person p ON p.id = c.person_id WHERE c.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "discord_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cb8baf0aca07e2895215dc8fbc0191acc05e1d2c6792e6e9c78088d5279565fd"
+}

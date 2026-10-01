@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE trade_offer SET status = 'accepted', decided_at = datetime('now'), move_id = ?\n         WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "45c3451c37ffd2c694fbbbe241008a1d72e9cd48ba12b1f5114dba2fb253255d"
+}

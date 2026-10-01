@@ -1,22 +1,39 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT m.season_id, m.coach_a_id, m.coach_b_id, m.winner_coach_id,\n                      m.differential, m.is_forfeit AS \"is_forfeit!: bool\", s.best_of, s.format,\n                      pa.showdown_username AS \"showdown_a?: String\",\n                      pb.showdown_username AS \"showdown_b?: String\"\n               FROM match m JOIN season s ON s.id = m.season_id\n               LEFT JOIN coach ca ON ca.id = m.coach_a_id LEFT JOIN person pa ON pa.id = ca.person_id\n               LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id\n               WHERE m.id = ?",
+  "query": "SELECT m.week, m.is_playoff AS \"is_playoff!: bool\",\n                      (SELECT MAX(week) FROM match WHERE season_id = m.season_id) AS \"last_week!: i64\",\n                      m.coach_a_id, m.coach_b_id, ca.person_id AS \"person_a?: i64\", cb.person_id AS \"person_b?: i64\",\n                      unixepoch(m.scheduled_at) AS \"previous?: i64\", s.format, s.best_of,\n                      pb.showdown_username AS \"showdown_b?: String\"\n               FROM match m JOIN season s ON s.id = m.season_id\n               LEFT JOIN coach ca ON ca.id = m.coach_a_id\n               LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id\n               WHERE m.id = ?",
   "describe": {
     "columns": [
       {
-        "name": "season_id",
+        "name": "week",
         "ordinal": 0,
         "type_info": "Integer",
         "origin": {
           "Table": {
             "table": "match",
-            "name": "season_id"
+            "name": "week"
           }
         }
       },
       {
-        "name": "coach_a_id",
+        "name": "is_playoff!: bool",
         "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "is_playoff"
+          }
+        }
+      },
+      {
+        "name": "last_week!: i64",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "coach_a_id",
+        "ordinal": 3,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -27,7 +44,7 @@
       },
       {
         "name": "coach_b_id",
-        "ordinal": 2,
+        "ordinal": 4,
         "type_info": "Integer",
         "origin": {
           "Table": {
@@ -37,52 +54,36 @@
         }
       },
       {
-        "name": "winner_coach_id",
-        "ordinal": 3,
-        "type_info": "Integer",
-        "origin": {
-          "Table": {
-            "table": "match",
-            "name": "winner_coach_id"
-          }
-        }
-      },
-      {
-        "name": "differential",
-        "ordinal": 4,
-        "type_info": "Integer",
-        "origin": {
-          "Table": {
-            "table": "match",
-            "name": "differential"
-          }
-        }
-      },
-      {
-        "name": "is_forfeit!: bool",
+        "name": "person_a?: i64",
         "ordinal": 5,
         "type_info": "Integer",
         "origin": {
           "Table": {
-            "table": "match",
-            "name": "is_forfeit"
+            "table": "coach",
+            "name": "person_id"
           }
         }
       },
       {
-        "name": "best_of",
+        "name": "person_b?: i64",
         "ordinal": 6,
         "type_info": "Integer",
         "origin": {
           "Table": {
-            "table": "season",
-            "name": "best_of"
+            "table": "coach",
+            "name": "person_id"
           }
         }
       },
       {
-        "name": "format",
+        "name": "previous?: i64",
         "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "format",
+        "ordinal": 8,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -92,19 +93,19 @@
         }
       },
       {
-        "name": "showdown_a?: String",
-        "ordinal": 8,
-        "type_info": "Text",
+        "name": "best_of",
+        "ordinal": 9,
+        "type_info": "Integer",
         "origin": {
           "Table": {
-            "table": "person",
-            "name": "showdown_username"
+            "table": "season",
+            "name": "best_of"
           }
         }
       },
       {
         "name": "showdown_b?: String",
-        "ordinal": 9,
+        "ordinal": 10,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -119,16 +120,17 @@
     },
     "nullable": [
       false,
+      false,
+      true,
+      true,
+      true,
       true,
       true,
       true,
       true,
       false,
-      false,
-      true,
-      true,
       true
     ]
   },
-  "hash": "4ddcd7eb08d8a2af199e5883392575a56193a6cf669cac21b9804759f7bb5702"
+  "hash": "ef56cda86c3beedb747850ebc90ada505c2bfe19d007aaaf632b64e93cbdb0c4"
 }

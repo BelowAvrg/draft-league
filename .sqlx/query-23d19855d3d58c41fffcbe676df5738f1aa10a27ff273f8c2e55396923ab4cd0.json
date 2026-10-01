@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO game_mon (game_id, coach_id, pokemon_id, species, played, led, mega, fainted, direct_kos, passive_kos)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING RETURNING id AS \"id!\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "game_mon",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "23d19855d3d58c41fffcbe676df5738f1aa10a27ff273f8c2e55396923ab4cd0"
+}

@@ -13,7 +13,7 @@ pub struct Coach {
     pub is_admin: bool,
     pub budget: i64,
     pub draft_position: i64,
-    /// Points already committed to picks.
+    /// Tier-list cost of the roster, pending moves included.
     pub spent: i64,
     /// When this coach declared themselves finished, if they have.
     pub done_at: Option<String>,
@@ -190,7 +190,10 @@ impl Db {
         // Cutting the budget under what is already spent would leave a roster
         // that no longer satisfies the cap rule.
         let spent: i64 = sqlx::query_scalar!(
-            r#"SELECT COALESCE(SUM(points_paid), 0) AS "s!: i64" FROM pick WHERE coach_id = ?"#,
+            r#"SELECT COALESCE(SUM(ct.points), 0) AS "s!: i64"
+               FROM roster_entry re
+               JOIN cost ct ON ct.season_id = re.season_id AND ct.pokemon_id = re.pokemon_id
+               WHERE re.coach_id = ? AND re.until_week IS NULL"#,
             coach_id
         )
         .fetch_one(self.pool())
@@ -282,7 +285,10 @@ pub(crate) async fn season_coaches<'e>(
         r#"SELECT c.id, c.person_id, c.budget, c.draft_position, c.done_at, c.team_name,
                   p.discord_id, p.discord_username, p.showdown_username,
                   p.is_admin AS "is_admin!: bool",
-                  COALESCE((SELECT SUM(points_paid) FROM pick WHERE coach_id = c.id), 0)
+                  COALESCE((SELECT SUM(ct.points) FROM roster_entry re
+                            JOIN cost ct ON ct.season_id = re.season_id
+                                        AND ct.pokemon_id = re.pokemon_id
+                            WHERE re.coach_id = c.id AND re.until_week IS NULL), 0)
                       AS "spent!: i64"
            FROM coach c JOIN person p ON p.id = c.person_id
            WHERE c.season_id = ?

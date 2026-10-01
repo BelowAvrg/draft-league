@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE trade_offer SET status = 'declined', decided_at = datetime('now'), reason = ?\n                     WHERE id = ? AND status = 'open'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "4076be7bd8e1fc99714c443832240dacfef40478e9c7ec4869eb31708b76bdef"
+}

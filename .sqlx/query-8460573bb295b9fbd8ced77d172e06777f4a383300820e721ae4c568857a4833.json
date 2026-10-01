@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT COALESCE(SUM(points_paid), 0) AS \"s!: i64\" FROM pick WHERE coach_id = ?",
+  "query": "SELECT COUNT(*) AS \"n!: i64\" FROM move WHERE ? IN (coach_a_id, coach_b_id)",
   "describe": {
     "columns": [
       {
-        "name": "s!: i64",
+        "name": "n!: i64",
         "ordinal": 0,
         "type_info": "Integer",
         "origin": "Expression"
@@ -17,5 +17,5 @@
       false
     ]
   },
-  "hash": "8c7cf6b54d6bc5276662e93bf74d87e9c7547113ab1d5ca09eabcfb3552151f1"
+  "hash": "8460573bb295b9fbd8ced77d172e06777f4a383300820e721ae4c568857a4833"
 }

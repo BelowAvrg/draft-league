@@ -3,6 +3,48 @@
 
 {% block title %}Week {{ m.week }} match{% endblock %}
 
+{# One previewed Pokémon under a game. Benched ones are dimmed; the log
+   never says whether they were brought. #}
+{% macro mon(x) %}
+<li class="flex items-start gap-3">
+    {% if let Some(slug) = x.slug %}
+        <img src="/static/sprites/{{ slug }}.png" alt="" width="32" height="32" loading="lazy"
+             class="sprite shrink-0 {% if !x.played %}grayscale opacity-40{% endif %}">
+    {% else %}
+        <span class="w-8 h-8 shrink-0 flex items-center justify-center text-faint">{% call ui::pokeball("w-5 h-5") %}{% endcall %}</span>
+    {% endif %}
+    <div class="min-w-0 flex-1 {% if !x.played %}opacity-40{% endif %}">
+        <p class="flex flex-wrap items-center gap-x-2">
+            <span class="font-semibold truncate">{{ x.name }}</span>
+            {% if x.led %}<span class="label text-faint border border-line rounded px-1.5">Lead</span>{% endif %}
+            {% if x.mega %}<span class="label text-faint border border-line rounded px-1.5">Mega</span>{% endif %}
+            {% if x.fainted %}<span class="inline-flex items-center gap-1.5 text-xs text-muted"><span class="w-1.5 h-1.5 rounded-full bg-danger"></span>Fainted</span>{% endif %}
+            {% if x.slug.is_none() %}<span class="inline-flex items-center gap-1.5 text-xs text-muted"><span class="w-1.5 h-1.5 rounded-full bg-warn"></span>Not on roster</span>{% endif %}
+            {% if !x.played %}<span class="text-xs text-faint">Not played</span>{% endif %}
+        </p>
+        {% if !x.moves.is_empty() %}<p class="text-xs text-muted">{{ x.moves }}</p>{% endif %}
+        {% if !x.items.is_empty() || !x.abilities.is_empty() %}
+            <p class="text-xs text-faint">{{ x.items }}{% if !x.items.is_empty() && !x.abilities.is_empty() %} · {% endif %}{{ x.abilities }}</p>
+        {% endif %}
+    </div>
+    {% if x.played %}
+    <span class="shrink-0 text-right tabular-nums" title="{{ x.direct_kos }} direct, {{ x.passive_kos }} passive">
+        <span class="font-semibold">{{ x.kos() }}</span><span class="text-faint"> KO{% if x.kos() != 1 %}s{% endif %}</span>
+    </span>
+    {% endif %}
+</li>
+{% endmacro %}
+
+{# One team's six under a game. #}
+{% macro side(team, list) %}
+<div class="min-w-0">
+    <h3 class="label">{% if let Some(t) = team %}{{ t }}{% endif %}</h3>
+    <ul class="mt-2 space-y-2">
+        {% for x in list %}{% call mon(x) %}{% endcall %}{% endfor %}
+    </ul>
+</div>
+{% endmacro %}
+
 {% block content %}
 {# The forms need both teams; a playoff slot not yet seeded has none. #}
 {% let editable = can_edit && m.coach_a.is_some() && m.coach_b.is_some() %}
@@ -17,6 +59,7 @@
     Week {{ m.week }} ·
     {% if m.is_playoff %}<span class="inline-flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-warn"></span>Playoffs</span> ·{% endif %}
     best of {{ m.best_of }} ·
+    {% if let Some(t) = m.scheduled_at %}<time datetime="{{ t }}" class="tabular-nums">{{ t }}</time> ·{% endif %}
     <span class="text-ink font-semibold tabular-nums">{{ m.result() }}</span>
 </p>
 
@@ -39,14 +82,23 @@
                             <th class="text-right">Replay</th>
                         </tr>
                     </thead>
-                    <tbody>
                     {% for g in games %}
+                    {% let side_a = self.mons_of(*g.id, *m.coach_a) %}
+                    {% let side_b = self.mons_of(*g.id, *m.coach_b) %}
+                    {% let has_stats = !side_a.is_empty() || !side_b.is_empty() %}
+                    <tbody x-data="{ open: false }">
                         <tr>
                             <td class="hidden sm:table-cell font-mono text-xs text-faint">{{ loop.index }}</td>
                             <td class="pl-5 sm:pl-3"><span class="block max-w-[7rem] sm:max-w-none truncate font-medium">{{ g.winner }}</span></td>
                             <td class="text-right tabular-nums">{{ g.winner_remaining }}</td>
                             <td>
                                 <div class="flex items-center justify-end gap-3">
+                                    {% if has_stats %}
+                                    <button type="button" @click="open = !open" :aria-expanded="open"
+                                            class="nav-link underline underline-offset-4 whitespace-nowrap">
+                                        Stats <span x-text="open ? '▴' : '▾'">▾</span>
+                                    </button>
+                                    {% endif %}
                                     <a href="{{ g.replay_url }}" class="nav-link underline underline-offset-4" rel="noopener" target="_blank">Watch</a>
                                     {% if can_edit %}
                                     <form method="post" action="/match/{{ m.id }}/game/{{ g.id }}/remove"
@@ -57,12 +109,45 @@
                                 </div>
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% if has_stats %}
+                        <tr x-show="open" x-cloak>
+                            <td colspan="4" class="pl-5 sm:pl-3 pb-5">
+                                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                    {% call side(m.team_a, side_a) %}{% endcall %}
+                                    {% call side(m.team_b, side_b) %}{% endcall %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
                     </tbody>
+                    {% endfor %}
                 </table>
             </div>
         {% endif %}
     </section>
+
+    {% if can_schedule && m.coach_a.is_some() && m.coach_b.is_some() %}
+    {# datetime-local is the viewer's own zone; the hidden field carries it as UTC. #}
+    <form method="post" action="/match/{{ m.id }}/schedule" class="card"
+          onsubmit="this.at.value = new Date(this.local.value).toISOString()">
+        <h2 class="text-[15px] font-semibold">Match time</h2>
+        <label for="local" class="mt-4 block label">Date and time</label>
+        <input id="local" name="local" type="datetime-local" required class="input w-full sm:w-auto mt-2 tabular-nums"
+               {% if let Some(t) = m.scheduled_at %}
+               x-data x-init="const d = new Date('{{ t }}'); $el.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)"
+               {% endif %}>
+        <input type="hidden" name="at">
+        <p class="mt-2 text-xs text-muted">In your time zone. Everyone else sees it in theirs.</p>
+        <div class="mt-4 flex justify-end gap-3">
+            {% if m.scheduled_at.is_some() %}
+            <button type="submit" form="clear-schedule" class="btn">Clear</button>
+            {% endif %}
+            <button type="submit" class="btn-primary">Save time</button>
+        </div>
+    </form>
+    {# No `at` field: clears the time. #}
+    <form id="clear-schedule" method="post" action="/match/{{ m.id }}/schedule"></form>
+    {% endif %}
 
     {% if editable %}
     {% if let (Some(a), Some(b)) = (m.coach_a, m.coach_b) %}

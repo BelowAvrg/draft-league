@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO game_mon_reveal (game_mon_id, kind, name) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "0ef672437afc4e7f82d71d69de400f353e945b3ceabb453f024785da45eaa55e"
+}

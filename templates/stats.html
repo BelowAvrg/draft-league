@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+
+{% block title %}Stats{% endblock %}
+
+{# A rate cell: a whole percent, or a dash before there's anything to divide by. #}
+{% macro rate(r) %}{% if let Some(v) = r %}{{ v }}<span class="text-faint">%</span>{% else %}<span class="text-faint">&ndash;</span>{% endif %}{% endmacro %}
+
+{# A revealed move, item or ability list, each with its game count. #}
+{% macro seen(label, list) %}
+{% if !list.is_empty() %}
+<div>
+    <h3 class="label">{{ label }}</h3>
+    <p class="mt-1">
+        {% for x in list.iter() %}<span class="whitespace-nowrap">{{ x.name }} <span class="text-faint tabular-nums">&times;{{ x.games }}</span></span>{% if !loop.last %}<span class="text-faint">, </span>{% endif %}{% endfor %}
+    </p>
+</div>
+{% endif %}
+{% endmacro %}
+
+{# A sortable column header. `key` names the data-* attribute on each tbody. #}
+{% macro head(key, label, right) %}
+<th class="{% if right %}text-right{% endif %}" :aria-sort="key === '{{ key }}' ? (desc ? 'descending' : 'ascending') : 'none'">
+    <button type="button" @click="sort('{{ key }}')" class="inline-flex items-center gap-1 hover:text-ink">
+        {{ label }}<span class="w-2" x-text="key === '{{ key }}' ? (desc ? '↓' : '↑') : ''"></span>
+    </button>
+</th>
+{% endmacro %}
+
+{% block content %}
+<h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">Stats</h1>
+<p class="mt-1 text-muted">
+    {% if let Some(s) = season %}{{ s.name }} · from replays only{% else %}No active season{% endif %}
+</p>
+
+{% if mons.is_empty() %}
+<div class="py-24 flex flex-col items-center gap-4 text-faint">
+    {% call ui::pokeball("w-10 h-10") %}{% endcall %}
+    <p>No replay stats yet.</p>
+</div>
+{% else %}
+<section class="card p-0 mt-8 min-w-0">
+    <h2 class="label px-5 pt-5">Pokémon</h2>
+    <div class="overflow-x-auto">
+        {# Each Pokémon is its own tbody so sorting moves its expanded row with it. #}
+        <table class="table mt-2" x-data="{
+            key: 'kos', desc: true,
+            sort(k) {
+                this.desc = this.key === k ? !this.desc : !['name', 'team'].includes(k);
+                this.key = k;
+                const t = this.$root;
+                [...t.tBodies].sort((a, b) => {
+                    const x = a.dataset[k], y = b.dataset[k];
+                    const c = isNaN(x) ? x.localeCompare(y) : x - y;
+                    return this.desc ? -c : c;
+                }).forEach(b => t.appendChild(b));
+            }
+        }">
+            <thead>
+                <tr>
+                    {% call head("name", "Pokémon", false) %}{% endcall %}
+                    {% call head("team", "Team", false) %}{% endcall %}
+                    {% call head("cost", "Cost", true) %}{% endcall %}
+                    {% call head("previewed", "Prev", true) %}{% endcall %}
+                    {% call head("previewRate", "Prev %", true) %}{% endcall %}
+                    {% call head("played", "Played", true) %}{% endcall %}
+                    {% call head("leadRate", "Lead %", true) %}{% endcall %}
+                    {% call head("winRate", "Win %", true) %}{% endcall %}
+                    {% call head("kos", "KOs", true) %}{% endcall %}
+                    {% call head("fainted", "Faints", true) %}{% endcall %}
+                    {% call head("net", "+/−", true) %}{% endcall %}
+                    {% call head("megaRate", "Mega", true) %}{% endcall %}
+                </tr>
+            </thead>
+            {% for x in mons %}
+            {# Missing rates sort as -1, below every real one. #}
+            <tbody x-data="{ open: false }"
+                   data-name="{{ x.name|lower }}" data-team="{{ x.team|lower }}"
+                   data-cost="{% if let Some(c) = x.cost %}{{ c }}{% else %}-1{% endif %}"
+                   data-previewed="{{ x.previewed }}" data-played="{{ x.played }}"
+                   data-preview-rate="{% if let Some(v) = x.preview_rate() %}{{ v }}{% else %}-1{% endif %}"
+                   data-lead-rate="{% if let Some(v) = x.lead_rate() %}{{ v }}{% else %}-1{% endif %}"
+                   data-win-rate="{% if let Some(v) = x.win_rate() %}{{ v }}{% else %}-1{% endif %}"
+                   data-kos="{{ x.kos() }}" data-fainted="{{ x.fainted }}" data-net="{{ x.net() }}"
+                   data-mega-rate="{% if x.is_mega() %}{% if let Some(v) = x.mega_rate() %}{{ v }}{% else %}-1{% endif %}{% else %}-2{% endif %}">
+                <tr>
+                    <td>
+                        <button type="button" @click="open = !open" :aria-expanded="open"
+                                class="flex items-center gap-3 text-left min-w-0">
+                            <img src="/static/sprites/{{ x.slug }}.png" alt="" width="32" height="32" loading="lazy" class="sprite shrink-0">
+                            <span class="font-semibold whitespace-nowrap hover:underline underline-offset-4">{{ x.name }}</span>
+                        </button>
+                    </td>
+                    <td><a href="/roster/{{ x.coach_id }}" class="block max-w-[9rem] truncate text-muted hover:underline underline-offset-4">{{ x.team }}</a></td>
+                    <td class="text-right tabular-nums whitespace-nowrap">{% if let Some(c) = x.cost %}{{ c }}<span class="text-faint"> pts</span>{% else %}<span class="text-faint">&ndash;</span>{% endif %}</td>
+                    <td class="text-right tabular-nums">{{ x.previewed }}</td>
+                    <td class="text-right tabular-nums">{% call rate(x.preview_rate()) %}{% endcall %}</td>
+                    <td class="text-right tabular-nums">{{ x.played }}</td>
+                    <td class="text-right tabular-nums">{% call rate(x.lead_rate()) %}{% endcall %}</td>
+                    <td class="text-right tabular-nums">{% call rate(x.win_rate()) %}{% endcall %}</td>
+                    <td class="text-right tabular-nums font-semibold" title="{{ x.direct_kos }} direct, {{ x.passive_kos }} passive">{{ x.kos() }}</td>
+                    <td class="text-right tabular-nums">{{ x.fainted }}</td>
+                    <td class="text-right tabular-nums {% if x.net() == 0 %}text-muted{% endif %}">{% call ui::signed(x.net()) %}{% endcall %}</td>
+                    <td class="text-right tabular-nums">{% if x.is_mega() %}{% call rate(x.mega_rate()) %}{% endcall %}{% endif %}</td>
+                </tr>
+                <tr x-show="open" x-cloak>
+                    <td colspan="12" class="pb-4">
+                        {% if x.moves.is_empty() && x.items.is_empty() && x.abilities.is_empty() %}
+                            <p class="text-muted">Nothing revealed yet.</p>
+                        {% else %}
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 text-sm max-w-3xl">
+                            {% call seen("Moves", x.moves) %}{% endcall %}
+                            {% call seen("Items", x.items) %}{% endcall %}
+                            {% call seen("Abilities", x.abilities) %}{% endcall %}
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+            {% endfor %}
+        </table>
+    </div>
+</section>
+<p class="mt-3 text-xs text-muted">
+    Click a column to sort, or a Pokémon to see its revealed set. Previewed means one of the six;
+    played means it switched in. Preview % counts the coach's games while it was on their roster.
+</p>
+
+<section class="card p-0 mt-6 min-w-0 max-w-2xl">
+    <h2 class="label px-5 pt-5">Coaches</h2>
+    <div class="overflow-x-auto">
+        <table class="table mt-2">
+            <thead>
+                <tr>
+                    <th>Team</th>
+                    <th class="text-right">Games</th>
+                    <th class="text-right">KOs dealt</th>
+                    <th class="text-right">KOs taken</th>
+                    <th class="text-right">Uncredited</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for c in coaches %}
+                <tr>
+                    <td><a href="/roster/{{ c.coach_id }}" class="block max-w-[11rem] sm:max-w-none truncate font-medium hover:underline underline-offset-4">{{ c.team }}</a></td>
+                    <td class="text-right tabular-nums">{{ c.games }}</td>
+                    <td class="text-right tabular-nums font-semibold">{{ c.dealt }}</td>
+                    <td class="text-right tabular-nums">{{ c.taken }}</td>
+                    <td class="text-right tabular-nums {% if c.uncredited() == 0 %}text-muted{% endif %}">{{ c.uncredited() }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<p class="mt-3 text-xs text-muted">
+    Uncredited faints are ones no opponent gets a KO for: hazards, recoil, a partner's move.
+</p>
+{% endif %}
+{% endblock %}

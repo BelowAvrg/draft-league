@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT person_id FROM coach WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "person_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "person_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "be23515679aa458ed5be1ae0139f29e1d65f084acbec8201da06ec218bc8543c"
+}

@@ -25,6 +25,8 @@ pub struct Replay {
     pub winner: usize,
     /// Pokémon each side had left: brought minus fainted.
     pub remaining: [i64; 2],
+    /// The battle log as Showdown stored it, kept for reading stats later.
+    pub log: String,
 }
 
 /// Why a replay could not be read.
@@ -83,12 +85,26 @@ struct Raw {
 /// or a battle with no winner.
 pub fn parse(url: &str, json: &str) -> Result<Replay, ReplayError> {
     let raw: Raw = serde_json::from_str(json)?;
+    let (players, winner, remaining) = read_log(&raw.log)?;
+    Ok(Replay { id: raw.id, url: url.to_owned(), format: raw.formatid, players, winner, remaining, log: raw.log })
+}
+
+/// Which side won a battle log: 0 for p1, 1 for p2.
+///
+/// # Errors
+/// Fails on the same logs `parse` refuses.
+pub fn winner_side(log: &str) -> Result<usize, ReplayError> {
+    read_log(log).map(|(_, winner, _)| winner)
+}
+
+/// The players, the index of the winner, and each side's Pokémon remaining.
+fn read_log(log: &str) -> Result<([String; 2], usize, [i64; 2]), ReplayError> {
     let mut players: [Option<String>; 2] = [None, None];
     let mut brought: [Option<i64>; 2] = [None, None];
     let mut fainted = [0_i64; 2];
     let mut winner = None;
 
-    for line in raw.log.lines() {
+    for line in log.lines() {
         let mut parts = line.split('|').skip(1);
         let (Some(kind), Some(arg)) = (parts.next(), parts.next()) else { continue };
         let side = match arg.get(..2) {
@@ -116,12 +132,5 @@ pub fn parse(url: &str, json: &str) -> Result<Replay, ReplayError> {
         Some(w) if w == to_id(&p2) => 1,
         _ => return Err(ReplayError::NoWinner),
     };
-    Ok(Replay {
-        id: raw.id,
-        url: url.to_owned(),
-        format: raw.formatid,
-        players: [p1, p2],
-        winner,
-        remaining: [b1 - fainted[0], b2 - fainted[1]],
-    })
+    Ok(([p1, p2], winner, [b1 - fainted[0], b2 - fainted[1]]))
 }

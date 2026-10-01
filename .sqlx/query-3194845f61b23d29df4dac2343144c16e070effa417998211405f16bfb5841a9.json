@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT c.id, c.person_id, c.budget, c.draft_position, c.done_at, c.team_name,\n                  p.discord_id, p.discord_username, p.showdown_username,\n                  p.is_admin AS \"is_admin!: bool\",\n                  COALESCE((SELECT SUM(points_paid) FROM pick WHERE coach_id = c.id), 0)\n                      AS \"spent!: i64\"\n           FROM coach c JOIN person p ON p.id = c.person_id\n           WHERE c.season_id = ?\n           ORDER BY c.draft_position",
+  "query": "SELECT c.id, c.person_id, c.budget, c.draft_position, c.done_at, c.team_name,\n                  p.discord_id, p.discord_username, p.showdown_username,\n                  p.is_admin AS \"is_admin!: bool\",\n                  COALESCE((SELECT SUM(ct.points) FROM roster_entry re\n                            JOIN cost ct ON ct.season_id = re.season_id\n                                        AND ct.pokemon_id = re.pokemon_id\n                            WHERE re.coach_id = c.id AND re.until_week IS NULL), 0)\n                      AS \"spent!: i64\"\n           FROM coach c JOIN person p ON p.id = c.person_id\n           WHERE c.season_id = ?\n           ORDER BY c.draft_position",
   "describe": {
     "columns": [
       {
@@ -137,5 +137,5 @@
       false
     ]
   },
-  "hash": "3adf80c7ce0138d068940a7990cee09334c90da6dc86d9d76766498127223940"
+  "hash": "3194845f61b23d29df4dac2343144c16e070effa417998211405f16bfb5841a9"
 }

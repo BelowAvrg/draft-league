@@ -1,0 +1,61 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT co.id AS \"coach_id!\", COALESCE(co.team_name, pe.discord_username) AS \"team!: String\",\n                      COUNT(DISTINCT gm.game_id) AS \"games!: i64\",\n                      COALESCE(SUM(gm.direct_kos + gm.passive_kos), 0) AS \"dealt!: i64\",\n                      (SELECT COALESCE(SUM(o.direct_kos + o.passive_kos), 0) FROM game_mon o\n                       WHERE o.coach_id <> co.id\n                         AND o.game_id IN (SELECT game_id FROM game_mon WHERE coach_id = co.id)) AS \"taken!: i64\",\n                      COALESCE(SUM(gm.fainted), 0) AS \"fainted!: i64\"\n               FROM coach co JOIN person pe ON pe.id = co.person_id\n               LEFT JOIN game_mon gm ON gm.coach_id = co.id\n               WHERE co.season_id = ?\n               GROUP BY co.id\n               ORDER BY 4 DESC, 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "coach_id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "team!: String",
+        "ordinal": 1,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "games!: i64",
+        "ordinal": 2,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "dealt!: i64",
+        "ordinal": 3,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "taken!: i64",
+        "ordinal": 4,
+        "type_info": "Null",
+        "origin": "Expression"
+      },
+      {
+        "name": "fainted!: i64",
+        "ordinal": 5,
+        "type_info": "Null",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "d98f94a6653a04408a153812e226eafe09fe90791bce7254e1fbb2fc07f992e2"
+}

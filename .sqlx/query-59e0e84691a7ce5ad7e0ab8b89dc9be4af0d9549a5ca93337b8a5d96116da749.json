@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE trade_offer\n             SET status = 'declined', decided_at = datetime('now'),\n                 reason = 'A Pokémon in it has since moved.'\n             WHERE status = 'open' AND id IS NOT ?\n               AND id IN (SELECT offer_id FROM trade_offer_item WHERE pokemon_id = ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "59e0e84691a7ce5ad7e0ab8b89dc9be4af0d9549a5ca93337b8a5d96116da749"
+}

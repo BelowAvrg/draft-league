@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT MAX(week) AS \"w?: i64\" FROM match WHERE season_id = ? AND is_playoff = 0",
+  "describe": {
+    "columns": [
+      {
+        "name": "w?: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ecc0b34b2c2e87e138637870438cbf88d585d5947bac616572183614c890471f"
+}

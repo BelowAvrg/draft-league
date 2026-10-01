@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT m.id, m.season_id, m.week, m.is_playoff AS \"is_playoff!: bool\",\n                      m.coach_a_id AS coach_a, m.coach_b_id AS coach_b,\n                      COALESCE(ca.team_name, pa.discord_username) AS \"team_a?: String\",\n                      COALESCE(cb.team_name, pb.discord_username) AS \"team_b?: String\",\n                      m.winner_coach_id AS winner, m.differential,\n                      m.is_forfeit AS \"is_forfeit!: bool\", s.best_of\n               FROM match m JOIN season s ON s.id = m.season_id\n               LEFT JOIN coach ca ON ca.id = m.coach_a_id LEFT JOIN person pa ON pa.id = ca.person_id\n               LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id\n               WHERE m.id = ?",
+  "query": "SELECT m.id, m.season_id, m.week, m.is_playoff AS \"is_playoff!: bool\",\n                  m.coach_a_id AS coach_a, m.coach_b_id AS coach_b,\n                  COALESCE(ca.team_name, pa.discord_username) AS \"team_a?: String\",\n                  COALESCE(cb.team_name, pb.discord_username) AS \"team_b?: String\",\n                  m.winner_coach_id AS winner, m.differential,\n                  m.is_forfeit AS \"is_forfeit!: bool\", s.best_of,\n                  strftime('%Y-%m-%dT%H:%M:%SZ', m.scheduled_at) AS \"scheduled_at?: String\"\n           FROM match m JOIN season s ON s.id = m.season_id\n           LEFT JOIN coach ca ON ca.id = m.coach_a_id LEFT JOIN person pa ON pa.id = ca.person_id\n           LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id\n           WHERE m.season_id = ?\n           ORDER BY m.week, m.id",
   "describe": {
     "columns": [
       {
@@ -124,6 +124,12 @@
             "name": "best_of"
           }
         }
+      },
+      {
+        "name": "scheduled_at?: String",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -141,8 +147,9 @@
       true,
       true,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "c3ffed183b84b45d5aecc476b518e74f0b73821a620b2e31199677daf1bedce7"
+  "hash": "5f3102cbc77f98955acfc18342844effe377f4bcf87125a52867d8d1241e47c5"
 }

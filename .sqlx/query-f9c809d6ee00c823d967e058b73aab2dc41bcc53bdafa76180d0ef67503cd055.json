@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE roster_entry SET until_week = ?, left_move_id = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "f9c809d6ee00c823d967e058b73aab2dc41bcc53bdafa76180d0ef67503cd055"
+}

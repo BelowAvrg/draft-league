@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO trade_offer_item (offer_id, pokemon_id, from_coach_id)\n                     VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "1051844f80ce03ecf4238ccea4715eb8d51c85f9dc43be8ad85dd0a6aaaa17bd"
+}

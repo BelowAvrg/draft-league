@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, from_week FROM roster_entry\n             WHERE coach_id = ? AND pokemon_id = ? AND until_week IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "from_week",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "roster_entry",
+            "name": "from_week"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "866f06c1e32371be92f3d3f785a6a2cb42f6f029b52785532114aa9b8192868a"
+}

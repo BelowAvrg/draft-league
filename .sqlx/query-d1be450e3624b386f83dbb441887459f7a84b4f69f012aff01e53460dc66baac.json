@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM webhook WHERE kind = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "d1be450e3624b386f83dbb441887459f7a84b4f69f012aff01e53460dc66baac"
+}

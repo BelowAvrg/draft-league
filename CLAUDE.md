@@ -36,7 +36,7 @@ Rust 2024 edition. Copy the `[lints.rust]` and `[lints.clippy]` blocks from
 
 ## Rust guidelines
 
-Condensed from the Microsoft Pragmatic Rust Guidelines. Full text: `guidelines.md`.
+Condensed from the Microsoft Pragmatic Rust Guidelines. Full text: `docs/guidelines.md`.
 
 ### Errors
 - Application code: `anyhow` for propagation. Don't mix app-level error crates.
@@ -111,7 +111,7 @@ Trivial one-liners need no test.
 
 ## Design
 
-`DESIGN.md` holds the feature set and the decisions behind it. Read it before
+`docs/DESIGN.md` holds the feature set and the decisions behind it. Read it before
 building anything; it settles draft format, budget rules, queue semantics, and
 schema. Its "Open questions" section lists what is still genuinely undecided —
 ask rather than guess.
@@ -123,12 +123,15 @@ Decisions most likely to be assumed wrongly:
 - Roster size is a **range**, not a constant. There is no `roster_size`; it is
   `min_roster` (8) and `max_roster` (12), and the reserve rule protects only the
   minimum.
-- Auth is Discord OAuth (`identify` scope). Discord integration stores fields
-  only — no messaging. Showdown replays are fetched and parsed for match
-  results (see `SEASON.md`).
+- Auth is Discord OAuth (`identify` scope). Discord messaging is channel
+  webhooks only (see `docs/DISCORD.md`). Showdown replays are fetched and parsed for match
+  results (see `docs/SEASON.md`).
 - Season play (schedule, results, standings, playoffs) is specified in
-  `SEASON.md`. Read it before touching those.
-- Visual design (layout, palette, components) is in `STYLE.md`. Follow it in
+  `docs/SEASON.md`. Read it before touching those.
+- Trades and free agency are specified in `docs/TRADES.md`. After the draft, the
+  roster is `roster_entry`, not `pick`.
+- Replay stats (KO credit, previewed vs. played) are specified in `docs/STATS.md`.
+- Visual design (layout, palette, components) is in `docs/STYLE.md`. Follow it in
   every template.
 
 ## Deploying
