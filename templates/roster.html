@@ -23,6 +23,7 @@
 <div class="mt-3 flex flex-wrap items-end justify-between gap-4">
     <div>
         <h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">{{ coach.discord_username }}</h1>
+        <a href="/availability/{{ coach.id }}" class="nav-link text-xs underline underline-offset-4">View availability</a>
         <p class="mt-1 text-muted">
             {% if let Some(team) = coach.team_name %}{{ team }} · {% endif %}
             {{ size }} / {{ max_roster }} Pokémon

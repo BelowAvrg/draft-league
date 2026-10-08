@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO match_time_option (proposal_id, starts_at)\n                 VALUES (?, datetime(?, 'unixepoch'))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "4a8cbaf6e2f5fb52c31c210769d2fbf61a6885444ac2fa285f791bb1f0e26a9b"
+}

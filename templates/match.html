@@ -127,17 +127,97 @@
     </section>
 
     {% if can_schedule && m.coach_a.is_some() && m.coach_b.is_some() %}
+    {% if let Some(p) = proposal %}
+    <section class="card border-warn/40">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <p class="label text-warn">Pending time suggestion</p>
+                <h2 class="mt-1 text-[15px] font-semibold">{{ p.proposed_by }} suggested {{ p.options.len() }} time{% if p.options.len() != 1 %}s{% endif %}</h2>
+            </div>
+            <span class="text-xs text-faint">Current match time stays unchanged until one is accepted.</span>
+        </div>
+        {% if self.proposal_is_mine() %}
+        <ul class="mt-4 space-y-2">
+            {% for option in p.options %}
+            <li class="rounded-lg border border-line px-3 py-2"><time datetime="{{ option.starts_at }}">{{ option.starts_at }}</time></li>
+            {% endfor %}
+        </ul>
+        <form method="post" action="/match/{{ m.id }}/proposals/{{ p.id }}/withdraw" class="mt-4 flex justify-end">
+            <button type="submit" class="btn">Withdraw suggestions</button>
+        </form>
+        {% else if can_propose %}
+        <form method="post" action="/match/{{ m.id }}/proposals/{{ p.id }}/accept" class="mt-4">
+            <div class="space-y-2">
+                {% for option in p.options %}
+                <label class="flex items-center gap-3 rounded-lg border border-line px-3 py-2 cursor-pointer hover:bg-raised">
+                    <input type="radio" name="option_id" value="{{ option.id }}" required>
+                    <time datetime="{{ option.starts_at }}">{{ option.starts_at }}</time>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="mt-4 flex justify-end gap-3">
+                <button type="submit" form="decline-proposal" class="btn">Decline all</button>
+                <button type="submit" class="btn-primary">Accept selected time</button>
+            </div>
+        </form>
+        <form id="decline-proposal" method="post" action="/match/{{ m.id }}/proposals/{{ p.id }}/decline"></form>
+        {% else %}
+        <ul class="mt-4 space-y-2">
+            {% for option in p.options %}
+            <li class="rounded-lg border border-line px-3 py-2"><time datetime="{{ option.starts_at }}">{{ option.starts_at }}</time></li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </section>
+    {% else if can_propose %}
+    <form method="post" action="/match/{{ m.id }}/proposals" class="card" id="proposal-form">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h2 class="text-[15px] font-semibold">Suggest match times</h2>
+                <p class="mt-1 text-xs text-muted">Select one or more 30-minute blocks. Green blocks match both coaches’ availability.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" class="btn btn-sm" id="previous-week" disabled>&larr;</button>
+                <span id="proposal-week" class="min-w-40 text-center text-xs font-medium"></span>
+                <button type="button" class="btn btn-sm" id="next-week">&rarr;</button>
+            </div>
+        </div>
+        <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted">
+            <span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded bg-live/30 ring-1 ring-live/70"></span>Both available</span>
+            <span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded bg-warn/20 ring-1 ring-warn/50"></span>One available</span>
+            {% if let (Some(a), Some(b)) = (m.coach_a, m.coach_b) %}
+            <a href="/availability/{{ a }}" class="nav-link underline underline-offset-4">{% if let Some(name) = m.team_a %}{{ name }}{% endif %}</a>
+            <a href="/availability/{{ b }}" class="nav-link underline underline-offset-4">{% if let Some(name) = m.team_b %}{{ name }}{% endif %}</a>
+            {% endif %}
+        </div>
+        <div id="availability-data" hidden
+             data-zone-a="{% if let Some(a) = availability_a %}{% if let Some(zone) = a.time_zone %}{{ zone }}{% else %}UTC{% endif %}{% else %}UTC{% endif %}"
+             data-zone-b="{% if let Some(b) = availability_b %}{% if let Some(zone) = b.time_zone %}{{ zone }}{% else %}UTC{% endif %}{% else %}UTC{% endif %}">
+            {% if let Some(a) = availability_a %}{% for slot in a.slots %}<i data-side="a" data-key="{{ slot.weekday }}:{{ slot.slot }}"></i>{% endfor %}{% endif %}
+            {% if let Some(b) = availability_b %}{% for slot in b.slots %}<i data-side="b" data-key="{{ slot.weekday }}:{{ slot.slot }}"></i>{% endfor %}{% endif %}
+        </div>
+        <div class="overflow-auto max-h-[65vh] mt-4 border border-line rounded-lg">
+            <div id="proposal-grid" class="grid grid-cols-[5.5rem_repeat(7,minmax(5.5rem,1fr))] min-w-[52rem]"></div>
+        </div>
+        <input type="hidden" name="times" id="proposal-times">
+        <div class="mt-4 flex items-center justify-between gap-4">
+            <p class="text-xs text-muted"><span id="selected-count">0</span> selected</p>
+            <button type="submit" class="btn-primary">Send suggestions</button>
+        </div>
+    </form>
+    {% endif %}
+
     {# datetime-local is the viewer's own zone; the hidden field carries it as UTC. #}
     <form method="post" action="/match/{{ m.id }}/schedule" class="card"
           onsubmit="this.at.value = new Date(this.local.value).toISOString()">
-        <h2 class="text-[15px] font-semibold">Match time</h2>
+        <h2 class="text-[15px] font-semibold">Set an agreed time directly</h2>
         <label for="local" class="mt-4 block label">Date and time</label>
         <input id="local" name="local" type="datetime-local" required class="input w-full sm:w-auto mt-2 tabular-nums"
                {% if let Some(t) = m.scheduled_at %}
                x-data x-init="const d = new Date('{{ t }}'); $el.value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)"
                {% endif %}>
         <input type="hidden" name="at">
-        <p class="mt-2 text-xs text-muted">In your time zone. Everyone else sees it in theirs.</p>
+        <p class="mt-2 text-xs text-muted">Use this when you already agreed elsewhere. Everyone sees the result in their own time zone.</p>
         <div class="mt-4 flex justify-end gap-3">
             {% if m.scheduled_at.is_some() %}
             <button type="submit" form="clear-schedule" class="btn">Clear</button>
@@ -145,7 +225,6 @@
             <button type="submit" class="btn-primary">Save time</button>
         </div>
     </form>
-    {# No `at` field: clears the time. #}
     <form id="clear-schedule" method="post" action="/match/{{ m.id }}/schedule"></form>
     {% endif %}
 
@@ -200,4 +279,123 @@
     {% endif %}
 
 </div>
+<script>
+(() => {
+    const form = document.getElementById('proposal-form');
+    if (!form) return;
+    const data = document.getElementById('availability-data');
+    const grid = document.getElementById('proposal-grid');
+    const selected = new Set();
+    const availability = { a: new Set(), b: new Set() };
+    for (const node of data.querySelectorAll('[data-side]')) availability[node.dataset.side].add(node.dataset.key);
+    const zones = { a: data.dataset.zoneA, b: data.dataset.zoneB };
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weekday = new Map(dayNames.map((name, index) => [name, index]));
+    let week = 0;
+
+    function availabilityKey(date, zone) {
+        let parts;
+        try {
+            parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: zone, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+            }).formatToParts(date);
+        } catch (_) {
+            return null;
+        }
+        const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+        const day = weekday.get(values.weekday);
+        const slot = Number(values.hour) * 2 + (Number(values.minute) >= 30 ? 1 : 0);
+        return `${day}:${slot}`;
+    }
+
+    function available(side, date) {
+        const key = availabilityKey(date, zones[side]);
+        return key !== null && availability[side].has(key);
+    }
+
+    function weekStart() {
+        const date = new Date();
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() - date.getDay() + week * 7);
+        return date;
+    }
+
+    function timeLabel(slot) {
+        const hour = Math.floor(slot / 2);
+        const minute = slot % 2 ? '30' : '00';
+        const shown = hour % 12 || 12;
+        return `${shown}:${minute} ${hour < 12 ? 'AM' : 'PM'}`;
+    }
+
+    function render() {
+        const start = weekStart();
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        document.getElementById('proposal-week').textContent = `${start.toLocaleDateString(undefined, {month: 'short', day: 'numeric'})} – ${end.toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}`;
+        document.getElementById('previous-week').disabled = week === 0;
+        grid.replaceChildren();
+
+        const corner = document.createElement('div');
+        corner.className = 'sticky top-0 z-[3] bg-surface border-b border-line';
+        grid.append(corner);
+        for (let day = 0; day < 7; day++) {
+            const date = new Date(start);
+            date.setDate(date.getDate() + day);
+            const heading = document.createElement('div');
+            heading.className = 'sticky top-0 z-[2] bg-surface border-b border-line px-2 py-3 text-center';
+            heading.innerHTML = `<span class="label">${dayNames[day]}</span><span class="block mt-0.5 text-xs text-faint">${date.toLocaleDateString(undefined, {month: 'numeric', day: 'numeric'})}</span>`;
+            grid.append(heading);
+        }
+
+        const now = new Date();
+        for (let slot = 0; slot < 48; slot++) {
+            const label = document.createElement('div');
+            label.className = 'sticky left-0 z-[1] bg-surface border-b border-r border-line px-3 py-2 text-right text-xs text-faint tabular-nums';
+            label.textContent = timeLabel(slot);
+            grid.append(label);
+            for (let day = 0; day < 7; day++) {
+                const date = new Date(start);
+                date.setDate(date.getDate() + day);
+                date.setMinutes(slot * 30);
+                const iso = date.toISOString();
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.dataset.time = iso;
+                button.title = date.toLocaleString();
+                const a = available('a', date);
+                const b = available('b', date);
+                const availabilityClass = a && b
+                    ? 'bg-live/20 hover:bg-live/30 ring-inset ring-1 ring-live/60'
+                    : a || b
+                        ? 'bg-warn/10 hover:bg-warn/20 ring-inset ring-1 ring-warn/40'
+                        : 'bg-raised/30 hover:bg-raised';
+                button.className = `min-h-9 border-b border-r border-line transition-colors ${availabilityClass}`;
+                if (selected.has(iso)) button.classList.add('outline', 'outline-2', 'outline-offset-[-3px]', 'outline-ink');
+                if (date <= now) {
+                    button.disabled = true;
+                    button.className = 'min-h-9 border-b border-r border-line bg-canvas opacity-30 cursor-not-allowed';
+                } else {
+                    button.addEventListener('click', () => {
+                        if (selected.has(iso)) selected.delete(iso); else selected.add(iso);
+                        render();
+                    });
+                }
+                grid.append(button);
+            }
+        }
+        document.getElementById('selected-count').textContent = selected.size;
+        document.getElementById('proposal-times').value = [...selected].sort().join(',');
+    }
+
+    document.getElementById('previous-week').addEventListener('click', () => { if (week > 0) week--; render(); });
+    document.getElementById('next-week').addEventListener('click', () => { week++; render(); });
+    form.addEventListener('submit', event => {
+        if (selected.size === 0) {
+            event.preventDefault();
+            alert('Select at least one time to suggest.');
+        }
+    });
+    render();
+})();
+</script>
 {% endblock %}

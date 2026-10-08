@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT proposed_by_person_id FROM match_time_proposal\n             WHERE id = ? AND match_id = ? AND status = 'open'",
+  "describe": {
+    "columns": [
+      {
+        "name": "proposed_by_person_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "proposed_by_person_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bf4aefa1d8b7a06c48b944e49fbc71f4b1749096f46eabda7a58dc1a98016e65"
+}

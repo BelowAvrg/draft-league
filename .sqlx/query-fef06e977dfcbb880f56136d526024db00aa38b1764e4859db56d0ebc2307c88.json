@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.match_id, p.proposed_by_person_id\n             FROM match_time_proposal p\n             JOIN match m ON m.id = p.match_id\n             JOIN coach ca ON ca.id = m.coach_a_id\n             JOIN coach cb ON cb.id = m.coach_b_id\n             WHERE m.season_id = ? AND p.status = 'open'\n               AND ? IN (ca.person_id, cb.person_id)",
+  "describe": {
+    "columns": [
+      {
+        "name": "match_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "match_id"
+          }
+        }
+      },
+      {
+        "name": "proposed_by_person_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "proposed_by_person_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fef06e977dfcbb880f56136d526024db00aa38b1764e4859db56d0ebc2307c88"
+}

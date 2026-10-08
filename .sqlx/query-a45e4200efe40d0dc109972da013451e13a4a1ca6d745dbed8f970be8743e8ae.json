@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT discord_username, time_zone FROM person WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "discord_username",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "time_zone",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "time_zone"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "a45e4200efe40d0dc109972da013451e13a4a1ca6d745dbed8f970be8743e8ae"
+}

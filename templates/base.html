@@ -22,6 +22,7 @@
                 <a href="/board" class="nav-link" {% if layout.page == "board" %}aria-current="page"{% endif %}>Board</a>
                 {% if layout.name.is_some() %}
                     <a href="/roster/mine" class="nav-link" {% if layout.page == "roster" %}aria-current="page"{% endif %}>Your roster</a>
+                    <a href="/availability" class="nav-link" {% if layout.page == "availability" %}aria-current="page"{% endif %}>Availability</a>
                 {% endif %}
                 <a href="/pokemon" class="nav-link" {% if layout.page == "pokemon" %}aria-current="page"{% endif %}>Tier list</a>
                 <a href="/trades" class="nav-link" {% if layout.page == "trades" %}aria-current="page"{% endif %}>Trades</a>

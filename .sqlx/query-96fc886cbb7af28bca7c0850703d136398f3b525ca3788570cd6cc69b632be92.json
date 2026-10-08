@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.coach_a_id, m.coach_b_id,\n                ca.person_id AS person_a, cb.person_id AS person_b\n         FROM match m\n         LEFT JOIN coach ca ON ca.id = m.coach_a_id\n         LEFT JOIN coach cb ON cb.id = m.coach_b_id\n         WHERE m.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "coach_a_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_a_id"
+          }
+        }
+      },
+      {
+        "name": "coach_b_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_b_id"
+          }
+        }
+      },
+      {
+        "name": "person_a",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "person_id"
+          }
+        }
+      },
+      {
+        "name": "person_b",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "person_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "96fc886cbb7af28bca7c0850703d136398f3b525ca3788570cd6cc69b632be92"
+}
