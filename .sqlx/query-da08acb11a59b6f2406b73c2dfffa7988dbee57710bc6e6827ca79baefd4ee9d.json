@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE match_time_option SET accepted = 1 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "da08acb11a59b6f2406b73c2dfffa7988dbee57710bc6e6827ca79baefd4ee9d"
+}

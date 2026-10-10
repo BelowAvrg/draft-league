@@ -64,6 +64,11 @@
                     {% if let Some(t) = m.scheduled_at %}
                     <time datetime="{{ t }}" class="col-start-1 col-span-3 text-center text-xs text-muted tabular-nums">{{ t }}</time>
                     {% endif %}
+                    {% if let Some(state) = self.proposal_state(*m.id) %}
+                    <span class="col-start-1 col-span-3 text-center text-xs text-warn">
+                        {{ state }}
+                    </span>
+                    {% endif %}
                 </a>
             </li>
         {% endfor %}

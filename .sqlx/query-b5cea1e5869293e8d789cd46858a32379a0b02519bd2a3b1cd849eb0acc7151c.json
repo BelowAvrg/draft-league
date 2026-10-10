@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE person SET time_zone = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b5cea1e5869293e8d789cd46858a32379a0b02519bd2a3b1cd849eb0acc7151c"
+}

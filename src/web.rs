@@ -9,6 +9,7 @@ use serde::Deserialize;
 use tower_http::services::ServeDir;
 
 use crate::auth::{AdminUser, CurrentUser, DiscordOauth};
+use crate::availability::{Availability, AvailabilityError, Slot};
 use crate::coaches::{Coach, CoachError};
 use crate::db::{Db, Person, Season};
 use crate::discord::{self, Kind, Webhooks};
@@ -17,6 +18,7 @@ use crate::error::AppError;
 use crate::moves::{MAX_MOVES, MoveError, Owned};
 use crate::picks::{Board, DraftError, Listing, Pick};
 use crate::results::{Entry, Game, Match, ResultError, Score};
+use crate::scheduling::{Pending, Proposal, ProposalError};
 use crate::standings::Row;
 use crate::trades::{MoveLine, Moved, OfferItem};
 use crate::tiers::ImportError;
@@ -84,8 +86,14 @@ pub fn router(state: AppState) -> Router {
         .route("/match/{id}/result", post(save_result))
         .route("/match/{id}/replay", post(upload_replay))
         .route("/match/{id}/schedule", post(save_schedule))
+        .route("/match/{id}/proposals", post(propose_times))
+        .route("/match/{id}/proposals/{proposal_id}/accept", post(accept_proposed_time))
+        .route("/match/{id}/proposals/{proposal_id}/decline", post(decline_proposed_times))
+        .route("/match/{id}/proposals/{proposal_id}/withdraw", post(withdraw_proposed_times))
         .route("/match/{id}/game/{game_id}/remove", post(remove_game))
         .route("/profile", get(profile).post(save_profile))
+        .route("/availability", get(my_availability).post(save_availability))
+        .route("/availability/{id}", get(coach_availability))
         .route("/health", get(health))
         .merge(crate::auth::routes())
         .with_state(state)
@@ -1126,6 +1134,119 @@ async fn update_member(
     back_to_admin(Ok(msg))
 }
 
+fn availability_error(error: AvailabilityError) -> AppError {
+    match error {
+        AvailabilityError::Sqlx(error) => error.into(),
+        AvailabilityError::NoCoach => AppError::NotFound,
+        other => AppError::Conflict(other.to_string()),
+    }
+}
+
+#[derive(Template)]
+#[template(path = "availability.html")]
+struct AvailabilityTemplate {
+    layout: Layout,
+    availability: Availability,
+    editable: bool,
+    days: [&'static str; 7],
+    rows: Vec<AvailabilityRow>,
+}
+
+struct AvailabilityRow {
+    slot: i64,
+    label: String,
+    days: [bool; 7],
+}
+
+fn availability_rows(availability: &Availability) -> Vec<AvailabilityRow> {
+    (0..48)
+        .map(|slot| {
+            let hour = slot / 2;
+            let minute = if slot % 2 == 0 { "00" } else { "30" };
+            let suffix = if hour < 12 { "AM" } else { "PM" };
+            let display_hour = match hour % 12 { 0 => 12, value => value };
+            let mut days = [false; 7];
+            for selected in &availability.slots {
+                if selected.slot == slot {
+                    days[usize::try_from(selected.weekday).expect("weekday is constrained to 0-6")] = true;
+                }
+            }
+            AvailabilityRow { slot, label: format!("{display_hour}:{minute} {suffix}"), days }
+        })
+        .collect()
+}
+
+/// The signed-in person's availability editor.
+async fn my_availability(
+    user: CurrentUser,
+    State(db): State<Db>,
+    Query(flash): Query<Flash>,
+) -> Result<impl IntoResponse, AppError> {
+    let availability = db.availability(user.0.id).await.map_err(availability_error)?;
+    let rows = availability_rows(&availability);
+    Ok(Html(AvailabilityTemplate {
+        layout: Layout::new(Some(&user), "availability", flash),
+        availability,
+        editable: true,
+        days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        rows,
+    }.render()?))
+}
+
+/// Public weekly availability for one coach.
+async fn coach_availability(
+    user: Option<CurrentUser>,
+    State(db): State<Db>,
+    Path(id): Path<i64>,
+) -> Result<impl IntoResponse, AppError> {
+    let availability = db.coach_availability(id).await.map_err(availability_error)?;
+    let rows = availability_rows(&availability);
+    Ok(Html(AvailabilityTemplate {
+        layout: Layout::new(user.as_ref(), "", Flash::default()),
+        availability,
+        editable: false,
+        days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+        rows,
+    }.render()?))
+}
+
+#[derive(Debug, Deserialize)]
+struct AvailabilityForm {
+    time_zone: String,
+    /// Comma-separated `weekday:slot` pairs assembled by the page.
+    slots: String,
+}
+
+/// Replaces the signed-in person's recurring weekly availability.
+async fn save_availability(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    Form(form): Form<AvailabilityForm>,
+) -> Result<impl IntoResponse, AppError> {
+    let slots = parse_slots(&form.slots).map_err(AppError::Conflict)?;
+    let (key, message) = match db.set_availability(person.id, &form.time_zone, &slots).await {
+        Ok(()) => ("ok", "Availability saved.".to_owned()),
+        Err(AvailabilityError::Sqlx(error)) => return Err(error.into()),
+        Err(error) => ("err", error.to_string()),
+    };
+    Ok(Redirect::to(&format!("/availability?{key}={}", urlencode(&message))))
+}
+
+fn parse_slots(value: &str) -> Result<Vec<Slot>, String> {
+    if value.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    value
+        .split(',')
+        .map(|pair| {
+            let (weekday, slot) = pair.split_once(':').ok_or_else(|| "Availability was malformed.".to_owned())?;
+            let weekday = weekday.parse().map_err(|_parse| "Availability was malformed.".to_owned())?;
+            let slot = slot.parse().map_err(|_parse| "Availability was malformed.".to_owned())?;
+            Slot::new(weekday, slot).map_err(|error| error.to_string())
+        })
+        .collect()
+}
+
 #[derive(Template)]
 #[template(path = "profile.html")]
 struct ProfileTemplate {
@@ -1234,6 +1355,19 @@ struct ScheduleTemplate {
     week: i64,
     /// The viewer's coach id this season, to highlight their matches.
     me: Option<i64>,
+    /// Open proposals involving the viewer.
+    pending: Vec<Pending>,
+    /// The viewer's person id, for distinguishing sent and received proposals.
+    viewer: Option<i64>,
+}
+
+impl ScheduleTemplate {
+    /// Pending proposal state for one match, when it involves the viewer.
+    fn proposal_state(&self, match_id: i64) -> Option<&'static str> {
+        self.pending.iter().find(|p| p.match_id == match_id).map(|p| {
+            if Some(p.proposed_by_person_id) == self.viewer { "Awaiting response" } else { "Action needed" }
+        })
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -1248,11 +1382,21 @@ async fn schedule_page(
     Query(query): Query<WeekQuery>,
 ) -> Result<impl IntoResponse, AppError> {
     let layout = Layout::new(user.as_ref(), "schedule", Flash::default());
-    let mut page = ScheduleTemplate { layout, season: None, weeks: Vec::new(), week: 0, me: None };
+    let mut page = ScheduleTemplate {
+        layout,
+        season: None,
+        weeks: Vec::new(),
+        week: 0,
+        me: None,
+        pending: Vec::new(),
+        viewer: None,
+    };
     let Some(season) = db.active_season().await? else {
         return Ok(Html(page.render()?));
     };
     if let Some(CurrentUser(person)) = user {
+        page.pending = db.pending_time_proposals(season.id, person.id).await?;
+        page.viewer = Some(person.id);
         page.me = db.coach_of(person.id, season.id).await?;
     }
     for m in db.matches(season.id).await? {
@@ -1344,6 +1488,13 @@ struct MatchTemplate {
     can_edit: bool,
     /// Whether the viewer may set the match time. Decoration only; the write re-checks.
     can_schedule: bool,
+    /// Whether the viewer is one of the match's coaches and may propose times.
+    can_propose: bool,
+    availability_a: Option<Availability>,
+    availability_b: Option<Availability>,
+    /// Private to the participants and admins.
+    proposal: Option<Proposal>,
+    viewer_person_id: Option<i64>,
     min_differential: i64,
     max_differential: i64,
 }
@@ -1352,6 +1503,11 @@ impl MatchTemplate {
     /// One coach's Pokémon in one game.
     fn mons_of(&self, game_id: i64, coach: Option<i64>) -> Vec<&crate::stats::MonLine> {
         self.mons.iter().filter(|x| x.game_id == game_id && Some(x.coach_id) == coach).collect()
+    }
+
+    /// Whether the open proposal was sent by the viewer.
+    fn proposal_is_mine(&self) -> bool {
+        self.proposal.as_ref().is_some_and(|p| Some(p.proposed_by_person_id) == self.viewer_person_id)
     }
 }
 
@@ -1364,18 +1520,33 @@ async fn match_page(
 ) -> Result<impl IntoResponse, AppError> {
     let m = db.match_by_id(id).await?.ok_or(AppError::NotFound)?;
     let layout = Layout::new(user.as_ref(), "schedule", flash);
-    let (is_admin, me) = match user {
-        Some(CurrentUser(p)) => (p.is_admin, db.coach_of(p.id, m.season_id).await?),
-        None => (false, None),
+    let (is_admin, me, viewer_person_id) = match user {
+        Some(CurrentUser(p)) => (p.is_admin, db.coach_of(p.id, m.season_id).await?, Some(p.id)),
+        None => (false, None, None),
     };
     let can_edit = is_admin || me.is_some();
     let can_schedule = is_admin || m.involves(me);
+    let can_propose = m.involves(me);
+    let availability_a = match m.coach_a {
+        Some(coach) => Some(db.coach_availability(coach).await.map_err(availability_error)?),
+        None => None,
+    };
+    let availability_b = match m.coach_b {
+        Some(coach) => Some(db.coach_availability(coach).await.map_err(availability_error)?),
+        None => None,
+    };
+    let proposal = if can_schedule { db.open_time_proposal(id).await? } else { None };
     let range = crate::results::differential_range(m.best_of);
     let page = MatchTemplate {
         games: db.games(id).await?,
         mons: db.match_mons(id).await?,
         can_edit,
         can_schedule,
+        can_propose,
+        availability_a,
+        availability_b,
+        proposal,
+        viewer_person_id,
         min_differential: *range.start(),
         max_differential: *range.end(),
         m,
@@ -1486,6 +1657,101 @@ async fn save_schedule(
         },
     };
     Ok(Redirect::to(&format!("/match/{id}?{key}={}", urlencode(&msg))))
+}
+
+#[derive(Debug, Deserialize)]
+struct ProposalForm {
+    /// Comma-separated RFC 3339 timestamps assembled by the weekly picker.
+    times: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct AcceptTimeForm {
+    option_id: i64,
+}
+
+/// Suggests one or more concrete times to the other coach.
+async fn propose_times(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    State(hooks): State<Webhooks>,
+    Path(id): Path<i64>,
+    Form(form): Form<ProposalForm>,
+) -> Result<impl IntoResponse, AppError> {
+    use time::format_description::well_known::Rfc3339;
+    let times = form
+        .times
+        .split(',')
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| time::OffsetDateTime::parse(value.trim(), &Rfc3339))
+        .collect::<Result<Vec<_>, _>>();
+    let result = match times {
+        Ok(times) => db.propose_times(id, &person, &times).await,
+        Err(_) => Err(ProposalError::InvalidTime),
+    };
+    if let Ok(proposal) = &result {
+        hooks.times_proposed(proposal).await;
+    }
+    proposal_redirect(id, result.map(|_| "Times suggested."))
+}
+
+/// Accepts one of the pending suggestions and schedules the match.
+async fn accept_proposed_time(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    State(hooks): State<Webhooks>,
+    Path((id, proposal_id)): Path<(i64, i64)>,
+    Form(form): Form<AcceptTimeForm>,
+) -> Result<impl IntoResponse, AppError> {
+    let result = db.accept_time_proposal(id, proposal_id, form.option_id, &person).await;
+    if let Ok(scheduled) = &result {
+        hooks.schedule(scheduled).await;
+    }
+    proposal_redirect(id, result.map(|_| "Time accepted and match scheduled."))
+}
+
+/// Declines every option in the pending suggestion.
+async fn decline_proposed_times(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    Path((id, proposal_id)): Path<(i64, i64)>,
+) -> Result<impl IntoResponse, AppError> {
+    proposal_redirect(
+        id,
+        db.decline_time_proposal(id, proposal_id, &person).await.map(|()| "Suggestions declined."),
+    )
+}
+
+/// Withdraws the signed-in coach's pending suggestion.
+async fn withdraw_proposed_times(
+    CurrentUser(person): CurrentUser,
+    State(db): State<Db>,
+    Path((id, proposal_id)): Path<(i64, i64)>,
+) -> Result<impl IntoResponse, AppError> {
+    proposal_redirect(
+        id,
+        db.withdraw_time_proposal(id, proposal_id, &person).await.map(|()| "Suggestions withdrawn."),
+    )
+}
+
+fn proposal_redirect(id: i64, result: Result<&str, ProposalError>) -> Result<Redirect, AppError> {
+    let (key, message) = match result {
+        Ok(message) => ("ok", message.to_owned()),
+        Err(ProposalError::Sqlx(error) | ProposalError::Result(ResultError::Sqlx(error))) => {
+            return Err(error.into());
+        }
+        Err(ProposalError::NotFound | ProposalError::Result(ResultError::NoMatch)) => {
+            return Err(AppError::NotFound);
+        }
+        Err(
+            ProposalError::NotParticipant
+            | ProposalError::NotRecipient
+            | ProposalError::NotProposer
+            | ProposalError::Result(ResultError::NotACoach),
+        ) => return Err(AppError::Forbidden),
+        Err(error) => ("err", error.to_string()),
+    };
+    Ok(Redirect::to(&format!("/match/{id}?{key}={}", urlencode(&message))))
 }
 
 /// Detaches a replay from a match.

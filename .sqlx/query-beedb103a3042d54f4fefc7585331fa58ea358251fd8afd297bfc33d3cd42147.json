@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT p.id, p.match_id, p.proposed_by_person_id,\n                    pe.discord_username AS proposed_by, p.status, p.created_at\n             FROM match_time_proposal p\n             JOIN person pe ON pe.id = p.proposed_by_person_id\n             WHERE p.match_id = ? AND p.status = 'open'",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "match_id",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "match_id"
+          }
+        }
+      },
+      {
+        "name": "proposed_by_person_id",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "proposed_by_person_id"
+          }
+        }
+      },
+      {
+        "name": "proposed_by",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "discord_username"
+          }
+        }
+      },
+      {
+        "name": "status",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "created_at",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "match_time_proposal",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "beedb103a3042d54f4fefc7585331fa58ea358251fd8afd297bfc33d3cd42147"
+}

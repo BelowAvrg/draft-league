@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE match_time_proposal\n         SET status = CASE WHEN id = ? THEN 'accepted' ELSE 'superseded' END,\n             decided_by_person_id = ?, decided_at = datetime('now')\n         WHERE match_id = ? AND status = 'open'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "277fa2d3d73539bad90f3c2e5394b20bf09c4531e1c41a9e8335fd7abb73dd98"
+}

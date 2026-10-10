@@ -1,0 +1,21 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT unixepoch(starts_at) AS \"at!: i64\" FROM match_time_option\n               WHERE id = ? AND proposal_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "at!: i64",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "b2a0934a9c602eec76e794aaaa128f0c4ff152fee3c4ed6c940e0ab435317a55"
+}

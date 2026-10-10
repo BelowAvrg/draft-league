@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 use crate::db::Db;
 use crate::picks::Drafted;
 use crate::results::{GameAdded, Scheduled};
+use crate::scheduling::Proposed;
 
 /// Discord rejects message `content` longer than this many characters.
 const MAX_CONTENT: usize = 2000;
@@ -144,6 +145,16 @@ pub fn draft_post(
         None => "The draft is complete.".to_owned(),
     });
     (lines.join("\n"), mentions)
+}
+
+/// Builds the scheduling-channel post for a new time proposal.
+#[must_use]
+pub fn proposed_post(from: &str, to: &str, options: usize, link: &str) -> (String, Vec<String>) {
+    let noun = if options == 1 { "time" } else { "times" };
+    (
+        format!("<@{from}> suggested {options} match {noun} to <@{to}>. Review them here:\n{link}"),
+        vec![from.to_owned(), to.to_owned()],
+    )
 }
 
 /// One message waiting to be sent.
@@ -285,6 +296,17 @@ impl Webhooks {
             let content =
                 format!("{}: <@{a}> vs <@{b}> {when}.\n{}/match/{}{challenge}", s.label, self.site, s.match_id);
             Ok((content, vec![a, b]))
+        };
+        self.post_or_warn(Kind::Schedule, post.await).await;
+    }
+
+    /// Posts that one coach suggested match times to the other.
+    pub async fn times_proposed(&self, proposal: &Proposed) {
+        let post = async {
+            let from = self.discord_id(proposal.from_coach).await?;
+            let to = self.discord_id(proposal.to_coach).await?;
+            let link = format!("{}/match/{}", self.site, proposal.match_id);
+            Ok(proposed_post(&from, &to, proposal.options, &link))
         };
         self.post_or_warn(Kind::Schedule, post.await).await;
     }

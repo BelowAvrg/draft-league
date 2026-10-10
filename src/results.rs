@@ -403,48 +403,10 @@ impl Db {
         at: Option<OffsetDateTime>,
     ) -> Result<Scheduled, ResultError> {
         let mut tx = self.pool().begin().await?;
-
-        let m = sqlx::query!(
-            r#"SELECT m.week, m.is_playoff AS "is_playoff!: bool",
-                      (SELECT MAX(week) FROM match WHERE season_id = m.season_id) AS "last_week!: i64",
-                      m.coach_a_id, m.coach_b_id, ca.person_id AS "person_a?: i64", cb.person_id AS "person_b?: i64",
-                      unixepoch(m.scheduled_at) AS "previous?: i64", s.format, s.best_of,
-                      pb.showdown_username AS "showdown_b?: String"
-               FROM match m JOIN season s ON s.id = m.season_id
-               LEFT JOIN coach ca ON ca.id = m.coach_a_id
-               LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id
-               WHERE m.id = ?"#,
-            match_id
-        )
-        .fetch_optional(&mut *tx)
-        .await?
-        .ok_or(ResultError::NoMatch)?;
-
-        let (Some(a), Some(b)) = (m.coach_a_id, m.coach_b_id) else {
-            return Err(ResultError::Unseeded);
-        };
-        if !by.is_admin && m.person_a != Some(by.id) && m.person_b != Some(by.id) {
-            return Err(ResultError::NotACoach);
-        }
-
-        let unix = at.map(OffsetDateTime::unix_timestamp);
-        sqlx::query!("UPDATE match SET scheduled_at = datetime(?, 'unixepoch') WHERE id = ?", unix, match_id)
-            .execute(&mut *tx)
-            .await?;
-
+        let scheduled = write_schedule(&mut tx, match_id, by, at, None).await?;
         tx.commit().await?;
-        tracing::info!(match_id, by = by.id, previous = ?m.previous, at = ?unix, "match scheduled");
-        Ok(Scheduled {
-            match_id,
-            label: match_label(m.week, m.is_playoff, m.last_week),
-            coaches: [a, b],
-            // The column's CHECK keeps stored times in range.
-            previous: m.previous.and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
-            at,
-            opponent_showdown: m.showdown_b,
-            format: m.format,
-            best_of: m.best_of,
-        })
+        tracing::info!(match_id, by = by.id, previous = ?scheduled.previous, at = ?scheduled.at, "match scheduled");
+        Ok(scheduled)
     }
 
     /// Every replay attached to a match, in upload order.
@@ -637,6 +599,69 @@ impl Db {
         tracing::info!(match_id, by = by.id, %replay, "replay removed");
         Ok(())
     }
+}
+
+/// Writes a match time and closes any pending proposal in the same transaction.
+///
+/// `accepted_proposal` identifies the proposal being accepted; every other
+/// open proposal is superseded. `None` means this is a direct schedule write.
+pub(crate) async fn write_schedule(
+    conn: &mut SqliteConnection,
+    match_id: i64,
+    by: &Person,
+    at: Option<OffsetDateTime>,
+    accepted_proposal: Option<i64>,
+) -> Result<Scheduled, ResultError> {
+    let m = sqlx::query!(
+        r#"SELECT m.week, m.is_playoff AS "is_playoff!: bool",
+                  (SELECT MAX(week) FROM match WHERE season_id = m.season_id) AS "last_week!: i64",
+                  m.coach_a_id, m.coach_b_id, ca.person_id AS "person_a?: i64", cb.person_id AS "person_b?: i64",
+                  unixepoch(m.scheduled_at) AS "previous?: i64", s.format, s.best_of,
+                  pb.showdown_username AS "showdown_b?: String"
+           FROM match m JOIN season s ON s.id = m.season_id
+           LEFT JOIN coach ca ON ca.id = m.coach_a_id
+           LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id
+           WHERE m.id = ?"#,
+        match_id
+    )
+    .fetch_optional(&mut *conn)
+    .await?
+    .ok_or(ResultError::NoMatch)?;
+
+    let (Some(a), Some(b)) = (m.coach_a_id, m.coach_b_id) else {
+        return Err(ResultError::Unseeded);
+    };
+    if !by.is_admin && m.person_a != Some(by.id) && m.person_b != Some(by.id) {
+        return Err(ResultError::NotACoach);
+    }
+
+    let unix = at.map(OffsetDateTime::unix_timestamp);
+    sqlx::query!("UPDATE match SET scheduled_at = datetime(?, 'unixepoch') WHERE id = ?", unix, match_id)
+        .execute(&mut *conn)
+        .await?;
+    sqlx::query!(
+        "UPDATE match_time_proposal
+         SET status = CASE WHEN id = ? THEN 'accepted' ELSE 'superseded' END,
+             decided_by_person_id = ?, decided_at = datetime('now')
+         WHERE match_id = ? AND status = 'open'",
+        accepted_proposal,
+        by.id,
+        match_id
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    Ok(Scheduled {
+        match_id,
+        label: match_label(m.week, m.is_playoff, m.last_week),
+        coaches: [a, b],
+        // The column's CHECK keeps stored times in range.
+        previous: m.previous.and_then(|t| OffsetDateTime::from_unix_timestamp(t).ok()),
+        at,
+        opponent_showdown: m.showdown_b,
+        format: m.format,
+        best_of: m.best_of,
+    })
 }
 
 /// Refuses anyone who is neither a coach in the season nor an admin.

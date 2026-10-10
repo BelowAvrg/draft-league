@@ -1,6 +1,7 @@
 //! Draft league site: schema, auth, and request handling.
 
 pub mod auth;
+pub mod availability;
 pub mod coaches;
 pub mod db;
 pub mod discord;
@@ -11,6 +12,7 @@ pub mod picks;
 pub mod replays;
 pub mod results;
 pub mod schedule;
+pub mod scheduling;
 pub mod session_store;
 pub mod standings;
 pub mod stats;

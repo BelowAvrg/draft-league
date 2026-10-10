@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}{{ availability.name }} availability{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+        <h1 class="text-[28px] leading-tight font-semibold tracking-[-0.02em]">
+            {% if editable %}Your availability{% else %}{{ availability.name }}’s availability{% endif %}
+        </h1>
+        <p class="mt-1 text-muted">Recurring weekly availability in 30-minute blocks.</p>
+    </div>
+    {% if !editable && layout.name.is_some() %}
+    <a href="/availability" class="btn">Edit yours</a>
+    {% endif %}
+</div>
+
+<form method="post" action="/availability" class="mt-8" id="availability-form">
+    <section class="card">
+        <label for="time-zone" class="label block">Time zone</label>
+        {% if editable %}
+        <input id="time-zone" name="time_zone" required maxlength="64" class="input w-full sm:w-80 mt-2"
+               value="{% if let Some(zone) = availability.time_zone %}{{ zone }}{% endif %}"
+               placeholder="America/Denver">
+        <p class="mt-2 text-xs text-muted">Detected from your browser. You can change it if this schedule uses another zone.</p>
+        {% else %}
+        <p class="mt-2 font-medium">{% if let Some(zone) = availability.time_zone %}{{ zone }}{% else %}<span class="text-faint">Not set</span>{% endif %}</p>
+        {% endif %}
+    </section>
+
+    <section class="card p-0 mt-6 overflow-hidden">
+        <div class="px-5 pt-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <h2 class="text-[15px] font-semibold">Weekly schedule</h2>
+                {% if editable %}<p class="mt-1 text-xs text-muted">Select every block when you are generally available.</p>{% endif %}
+            </div>
+            {% if editable %}
+            <div class="flex gap-2">
+                <button type="button" class="btn btn-sm" id="clear-availability">Clear</button>
+                <button type="submit" class="btn-primary btn-sm">Save availability</button>
+            </div>
+            {% endif %}
+        </div>
+        <div class="overflow-auto max-h-[65vh] mt-4" id="availability-scroll">
+            <div class="grid grid-cols-[5.5rem_repeat(7,minmax(4.5rem,1fr))] min-w-[46rem] text-xs">
+                <div class="sticky top-0 z-[2] bg-surface border-b border-line"></div>
+                {% for day in days %}
+                <div class="sticky top-0 z-[2] bg-surface border-b border-line px-2 py-3 text-center label">{{ day }}</div>
+                {% endfor %}
+                {% for row in rows %}
+                <div class="sticky left-0 z-[1] bg-surface border-b border-r border-line px-3 py-2 text-right text-faint tabular-nums">{{ row.label }}</div>
+                    {% for selected in row.days %}
+                    <label class="relative border-b border-r border-line min-h-9 {% if editable %}cursor-pointer{% endif %}"
+                           data-weekday="{{ loop.index0 }}" data-slot="{{ row.slot }}">
+                        {% if editable %}
+                        <input type="checkbox" class="peer sr-only availability-slot"
+                               data-weekday="{{ loop.index0 }}" data-slot="{{ row.slot }}"
+                               {% if selected %}checked{% endif %}>
+                        <span class="absolute inset-1 rounded bg-raised peer-checked:bg-live/25 peer-checked:ring-1 peer-checked:ring-live/70"></span>
+                        {% else %}
+                        <span class="absolute inset-1 rounded {% if selected %}bg-live/25 ring-1 ring-live/70{% else %}bg-raised/30{% endif %}"></span>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% if editable %}<input type="hidden" name="slots" id="availability-slots">{% endif %}
+</form>
+
+<script>
+(() => {
+    const scroll = document.getElementById('availability-scroll');
+    const now = new Date();
+    const slot = now.getHours() * 2 + (now.getMinutes() >= 30 ? 1 : 0);
+    const row = scroll.querySelector(`label[data-weekday="0"][data-slot="${slot}"]`);
+    const header = scroll.querySelector('.sticky.top-0');
+    if (row && header) scroll.scrollTop = Math.max(0, row.offsetTop - header.offsetHeight - row.offsetHeight * 2);
+})();
+</script>
+
+{% if editable %}
+<script>
+(() => {
+    const form = document.getElementById('availability-form');
+    const zone = document.getElementById('time-zone');
+    if (!zone.value) zone.value = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
+    document.getElementById('clear-availability').addEventListener('click', () => {
+        for (const input of document.querySelectorAll('.availability-slot')) input.checked = false;
+    });
+    form.addEventListener('submit', event => {
+        try { new Intl.DateTimeFormat('en-US', { timeZone: zone.value }).format(); }
+        catch (_) {
+            event.preventDefault();
+            zone.setCustomValidity('Enter a recognized time zone, such as America/Denver.');
+            zone.reportValidity();
+            return;
+        }
+        zone.setCustomValidity('');
+        document.getElementById('availability-slots').value = [...document.querySelectorAll('.availability-slot:checked')]
+            .map(input => `${input.dataset.weekday}:${input.dataset.slot}`).join(',');
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}
