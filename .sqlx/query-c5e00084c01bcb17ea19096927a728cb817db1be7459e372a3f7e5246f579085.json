@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO person_availability (person_id, weekday, slot) VALUES (?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "c5e00084c01bcb17ea19096927a728cb817db1be7459e372a3f7e5246f579085"
+}

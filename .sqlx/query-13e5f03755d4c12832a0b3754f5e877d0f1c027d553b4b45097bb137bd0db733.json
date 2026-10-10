@@ -1,0 +1,136 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT m.week, m.is_playoff AS \"is_playoff!: bool\",\n                  (SELECT MAX(week) FROM match WHERE season_id = m.season_id) AS \"last_week!: i64\",\n                  m.coach_a_id, m.coach_b_id, ca.person_id AS \"person_a?: i64\", cb.person_id AS \"person_b?: i64\",\n                  unixepoch(m.scheduled_at) AS \"previous?: i64\", s.format, s.best_of,\n                  pb.showdown_username AS \"showdown_b?: String\"\n           FROM match m JOIN season s ON s.id = m.season_id\n           LEFT JOIN coach ca ON ca.id = m.coach_a_id\n           LEFT JOIN coach cb ON cb.id = m.coach_b_id LEFT JOIN person pb ON pb.id = cb.person_id\n           WHERE m.id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "week",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "week"
+          }
+        }
+      },
+      {
+        "name": "is_playoff!: bool",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "is_playoff"
+          }
+        }
+      },
+      {
+        "name": "last_week!: i64",
+        "ordinal": 2,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "coach_a_id",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_a_id"
+          }
+        }
+      },
+      {
+        "name": "coach_b_id",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "match",
+            "name": "coach_b_id"
+          }
+        }
+      },
+      {
+        "name": "person_a?: i64",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "person_id"
+          }
+        }
+      },
+      {
+        "name": "person_b?: i64",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "coach",
+            "name": "person_id"
+          }
+        }
+      },
+      {
+        "name": "previous?: i64",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": "Expression"
+      },
+      {
+        "name": "format",
+        "ordinal": 8,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "season",
+            "name": "format"
+          }
+        }
+      },
+      {
+        "name": "best_of",
+        "ordinal": 9,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "season",
+            "name": "best_of"
+          }
+        }
+      },
+      {
+        "name": "showdown_b?: String",
+        "ordinal": 10,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "person",
+            "name": "showdown_username"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "13e5f03755d4c12832a0b3754f5e877d0f1c027d553b4b45097bb137bd0db733"
+}

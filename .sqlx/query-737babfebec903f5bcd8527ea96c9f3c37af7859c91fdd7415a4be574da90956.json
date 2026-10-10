@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT weekday, slot FROM person_availability\n             WHERE person_id = ? ORDER BY weekday, slot",
+  "describe": {
+    "columns": [
+      {
+        "name": "weekday",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "person_availability",
+            "name": "weekday"
+          }
+        }
+      },
+      {
+        "name": "slot",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "person_availability",
+            "name": "slot"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "737babfebec903f5bcd8527ea96c9f3c37af7859c91fdd7415a4be574da90956"
+}

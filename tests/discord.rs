@@ -63,7 +63,7 @@ async fn webhook_urls_set_and_clear_per_kind() {
     assert_eq!(db.webhooks_set().await.expect("list"), vec![Kind::Draft]);
 
     db.clear_webhook(Kind::Draft).await.expect("clear");
-    assert!(db.webhooks_set().await.expect("list").is_empty());
+    assert_eq!(db.webhooks_set().await.expect("list"), Vec::new());
 }
 
 fn drafted(number: i64, who: &str, pokemon: &str, points: i64) -> Drafted {
@@ -90,4 +90,15 @@ fn draft_post_with_a_lead_and_a_finished_draft() {
     let (content, mentions) = discord::draft_post(lead, &[], None, "https://site/draft");
     assert_eq!(content, "<@1> is done drafting with 9 Pokémon.\nThe draft is complete.");
     assert_eq!(mentions, ["1"]);
+}
+
+#[test]
+fn proposed_times_ping_both_coaches_and_link_the_match() {
+    let (content, mentions) =
+        discord::proposed_post("123", "456", 3, "https://league.test/match/9");
+    assert_eq!(
+        content,
+        "<@123> suggested 3 match times to <@456>. Review them here:\nhttps://league.test/match/9"
+    );
+    assert_eq!(mentions, ["123", "456"]);
 }
