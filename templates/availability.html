@@ -41,7 +41,7 @@
             </div>
             {% endif %}
         </div>
-        <div class="overflow-auto max-h-[65vh] mt-4">
+        <div class="overflow-auto max-h-[65vh] mt-4" id="availability-scroll">
             <div class="grid grid-cols-[5.5rem_repeat(7,minmax(4.5rem,1fr))] min-w-[46rem] text-xs">
                 <div class="sticky top-0 z-[2] bg-surface border-b border-line"></div>
                 {% for day in days %}
@@ -50,7 +50,8 @@
                 {% for row in rows %}
                 <div class="sticky left-0 z-[1] bg-surface border-b border-r border-line px-3 py-2 text-right text-faint tabular-nums">{{ row.label }}</div>
                     {% for selected in row.days %}
-                    <label class="relative border-b border-r border-line min-h-9 {% if editable %}cursor-pointer{% endif %}">
+                    <label class="relative border-b border-r border-line min-h-9 {% if editable %}cursor-pointer{% endif %}"
+                           data-weekday="{{ loop.index0 }}" data-slot="{{ row.slot }}">
                         {% if editable %}
                         <input type="checkbox" class="peer sr-only availability-slot"
                                data-weekday="{{ loop.index0 }}" data-slot="{{ row.slot }}"
@@ -67,6 +68,17 @@
     </section>
     {% if editable %}<input type="hidden" name="slots" id="availability-slots">{% endif %}
 </form>
+
+<script>
+(() => {
+    const scroll = document.getElementById('availability-scroll');
+    const now = new Date();
+    const slot = now.getHours() * 2 + (now.getMinutes() >= 30 ? 1 : 0);
+    const row = scroll.querySelector(`label[data-weekday="0"][data-slot="${slot}"]`);
+    const header = scroll.querySelector('.sticky.top-0');
+    if (row && header) scroll.scrollTop = Math.max(0, row.offsetTop - header.offsetHeight - row.offsetHeight * 2);
+})();
+</script>
 
 {% if editable %}
 <script>

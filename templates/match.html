@@ -196,7 +196,7 @@
             {% if let Some(a) = availability_a %}{% for slot in a.slots %}<i data-side="a" data-key="{{ slot.weekday }}:{{ slot.slot }}"></i>{% endfor %}{% endif %}
             {% if let Some(b) = availability_b %}{% for slot in b.slots %}<i data-side="b" data-key="{{ slot.weekday }}:{{ slot.slot }}"></i>{% endfor %}{% endif %}
         </div>
-        <div class="overflow-auto max-h-[65vh] mt-4 border border-line rounded-lg">
+        <div class="overflow-auto max-h-[65vh] mt-4 border border-line rounded-lg" id="proposal-scroll">
             <div id="proposal-grid" class="grid grid-cols-[5.5rem_repeat(7,minmax(5.5rem,1fr))] min-w-[52rem]"></div>
         </div>
         <input type="hidden" name="times" id="proposal-times">
@@ -285,6 +285,7 @@
     if (!form) return;
     const data = document.getElementById('availability-data');
     const grid = document.getElementById('proposal-grid');
+    const scroll = document.getElementById('proposal-scroll');
     const selected = new Set();
     const availability = { a: new Set(), b: new Set() };
     for (const node of data.querySelectorAll('[data-side]')) availability[node.dataset.side].add(node.dataset.key);
@@ -292,6 +293,7 @@
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weekday = new Map(dayNames.map((name, index) => [name, index]));
     let week = 0;
+    let initialScroll = true;
 
     function availabilityKey(date, zone) {
         let parts;
@@ -352,6 +354,7 @@
             const label = document.createElement('div');
             label.className = 'sticky left-0 z-[1] bg-surface border-b border-r border-line px-3 py-2 text-right text-xs text-faint tabular-nums';
             label.textContent = timeLabel(slot);
+            label.dataset.slot = slot;
             grid.append(label);
             for (let day = 0; day < 7; day++) {
                 const date = new Date(start);
@@ -382,6 +385,13 @@
                 }
                 grid.append(button);
             }
+        }
+        if (initialScroll) {
+            const currentSlot = now.getHours() * 2 + (now.getMinutes() >= 30 ? 1 : 0);
+            const row = grid.querySelector(`[data-slot="${currentSlot}"]`);
+            const header = grid.firstElementChild;
+            if (row && header) scroll.scrollTop = Math.max(0, row.offsetTop - header.offsetHeight - row.offsetHeight * 2);
+            initialScroll = false;
         }
         document.getElementById('selected-count').textContent = selected.size;
         document.getElementById('proposal-times').value = [...selected].sort().join(',');
