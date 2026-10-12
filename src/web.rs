@@ -114,8 +114,8 @@ struct BoardRow {
     budget: i64,
     remaining: i64,
     on_clock: bool,
-    /// Drafted Pokémon in pick order, shown as a sprite strip under the row.
-    team: Vec<Pick>,
+    /// Pokémon playing this week, draft picks first, shown as a sprite strip.
+    team: Vec<Owned>,
 }
 
 /// What the signed-in coach needs to act on their own turn.
@@ -186,8 +186,6 @@ async fn index(
     };
 
     let coaches = db.coaches(board.season.id).await?;
-    // Every pick this season, newest first; reversed per coach into pick order.
-    let picks = db.recent_picks(board.season.id, i64::MAX).await?;
     for coach in &coaches {
         let Some(seat) = board.seat_of(coach.id) else { continue };
         let on_clock = board.turn.coach_id == Some(coach.id);
@@ -199,7 +197,8 @@ async fn index(
             budget: coach.budget,
             remaining: seat.remaining,
             on_clock,
-            team: picks.iter().rev().filter(|p| p.coach_id == coach.id).cloned().collect(),
+            // Who plays now, with free-agency and trade swaps applied.
+            team: db.roster(coach.id).await?.into_iter().filter(|o| o.joins.is_none()).collect(),
         });
         if on_clock {
             page.on_the_clock = Some(coach.discord_username.clone());

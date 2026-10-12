@@ -100,7 +100,7 @@
                     {% if !row.team.is_empty() %}
                     <ul class="col-span-2 sm:col-start-2 sm:col-span-3 mt-1 flex flex-wrap gap-1">
                         {% for p in row.team %}
-                            <li><img src="/static/sprites/{{ p.slug }}.png" alt="{{ p.display_name }}" title="{{ p.display_name }} · {{ p.points_paid }} pts"
+                            <li><img src="/static/sprites/{{ p.slug }}.png" alt="{{ p.display_name }}" title="{{ p.display_name }} · {{ p.points }} pts"
                                      width="32" height="32" class="sprite"></li>
                         {% endfor %}
                     </ul>
